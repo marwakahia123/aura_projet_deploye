@@ -38,6 +38,9 @@ async def get_response(
                 "context": context_string,
             },
         )
+        logger.info("Agent HTTP status: %d", response.status_code)
+        if response.status_code >= 400:
+            logger.error("Agent error body: %s", response.text[:500])
         response.raise_for_status()
         data = response.json()
         logger.info("Agent response keys: %s", list(data.keys()))
