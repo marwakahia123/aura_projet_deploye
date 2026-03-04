@@ -1,5 +1,4 @@
 import logging
-from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
@@ -15,14 +14,12 @@ router = APIRouter()
 
 @router.post("/api/chat")
 async def chat(request: ChatRequest):
+    """Step 1: Send command to agent → returns text response."""
     settings = get_settings()
-
-    logger.info("Chat request: command='%s', context_segments=%d", request.command[:80], len(request.context))
 
     if not settings.AURA_AGENT_URL or not settings.AURA_AGENT_TOKEN:
         raise HTTPException(status_code=500, detail="AURA_AGENT_URL/TOKEN not configured")
 
-    # 1. Get response from colleague's agent
     try:
         response_text = await get_response(
             command=request.command,
@@ -35,22 +32,30 @@ async def chat(request: ChatRequest):
         logger.error("Agent error: %s: %s", type(e).__name__, e)
         raise HTTPException(status_code=502, detail=f"Agent error: {type(e).__name__}: {e}")
 
-    # 2. If TTS not configured, return text only
+    return {"text": response_text}
+
+
+@router.post("/api/tts")
+async def tts(request: dict):
+    """Step 2: Convert text to speech → streams MP3 audio."""
+    settings = get_settings()
+    text = request.get("text", "")
+
+    if not text:
+        raise HTTPException(status_code=400, detail="No text provided")
+
     if not settings.ELEVENLABS_API_KEY or not settings.ELEVENLABS_VOICE_ID:
-        return {"text": response_text, "audio": False}
+        raise HTTPException(status_code=500, detail="TTS not configured")
 
-    # 3. Stream TTS audio
-    encoded_text = quote(response_text, safe="")
-
-    return StreamingResponse(
-        stream_tts(
-            text=response_text,
-            voice_id=settings.ELEVENLABS_VOICE_ID,
-            api_key=settings.ELEVENLABS_API_KEY,
-        ),
-        media_type="audio/mpeg",
-        headers={
-            "X-Response-Text": encoded_text,
-            "Access-Control-Expose-Headers": "X-Response-Text",
-        },
-    )
+    try:
+        return StreamingResponse(
+            stream_tts(
+                text=text,
+                voice_id=settings.ELEVENLABS_VOICE_ID,
+                api_key=settings.ELEVENLABS_API_KEY,
+            ),
+            media_type="audio/mpeg",
+        )
+    except Exception as e:
+        logger.error("TTS error: %s: %s", type(e).__name__, e)
+        raise HTTPException(status_code=502, detail=f"TTS error: {e}")
