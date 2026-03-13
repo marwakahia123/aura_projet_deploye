@@ -18,15 +18,15 @@ export default function OAuthCallbackPage() {
 
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
-    const state = params.get("state"); // provider name
+    const state = params.get("state");
     const error = params.get("error");
 
     if (error) {
       processedRef.current = true;
       setStatus("error");
-      setMessage(`OAuth refusé: ${error}`);
+      setMessage(`OAuth refuse: ${error}`);
       setTimeout(() => {
-        router.replace(`/settings?error=${encodeURIComponent(`OAuth refusé: ${error}`)}`);
+        router.replace(`/settings?error=${encodeURIComponent(`OAuth refuse: ${error}`)}`);
       }, 2000);
       return;
     }
@@ -34,7 +34,7 @@ export default function OAuthCallbackPage() {
     if (!code || !state) {
       processedRef.current = true;
       setStatus("error");
-      setMessage("Paramètres OAuth manquants");
+      setMessage("Parametres OAuth manquants");
       setTimeout(() => {
         router.replace("/settings?error=Param%C3%A8tres%20OAuth%20manquants");
       }, 2000);
@@ -54,11 +54,11 @@ export default function OAuthCallbackPage() {
           (result as Record<string, string>).team_name ||
           (result as Record<string, string>).portal_name ||
           provider;
-        setMessage(`${provider} connecté : ${detail}`);
+        setMessage(`${provider} connecte : ${detail}`);
 
         setTimeout(() => {
           router.replace(
-            `/settings?success=${encodeURIComponent(`${provider} connecté avec succès`)}`
+            `/settings?success=${encodeURIComponent(`${provider} connecte avec succes`)}`
           );
         }, 1500);
       })
@@ -73,67 +73,88 @@ export default function OAuthCallbackPage() {
       });
   }, [session?.access_token, router]);
 
+  const orbColor =
+    status === "error"
+      ? "#d44040"
+      : status === "success"
+        ? "#2d9e6a"
+        : "#e36b2b";
+
   const orbGradient =
     status === "error"
-      ? "linear-gradient(135deg, #ff4757, #ff6b81)"
+      ? "linear-gradient(135deg, #d44040, #e06060)"
       : status === "success"
-        ? "linear-gradient(135deg, #00d68f, #00b894)"
-        : "linear-gradient(135deg, #ff6b35, #ff8c42, #ffa726)";
+        ? "linear-gradient(135deg, #2d9e6a, #3dbf80)"
+        : "linear-gradient(135deg, #e36b2b, #f08c42, #f5a623)";
 
   return (
     <div
-      className="flex min-h-screen items-center justify-center px-4"
-      style={{ background: "#0a0a0f" }}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+        background: "#faf6f1",
+        padding: 16,
+      }}
     >
       <div
-        className="flex flex-col items-center gap-8 rounded-2xl px-10 py-12 text-center"
         style={{
-          background: "rgba(255,255,255,0.03)",
-          border: "1px solid rgba(255,255,255,0.06)",
-          backdropFilter: "blur(20px)",
-          minWidth: "320px",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 32,
+          padding: "48px 40px",
+          borderRadius: 20,
+          background: "#ffffff",
+          border: "1px solid #e8e2d9",
+          boxShadow: "0 4px 24px rgba(0,0,0,0.06)",
+          minWidth: 320,
+          textAlign: "center",
         }}
       >
-        {/* Animated orb */}
-        <div className="relative">
-          {/* Glow layer */}
+        {/* Orb */}
+        <div style={{ position: "relative" }}>
           <div
-            className={`absolute inset-0 rounded-full blur-xl opacity-40 ${
-              status === "processing" ? "animate-pulse" : ""
-            }`}
-            style={{ background: orbGradient }}
-          />
-          {/* Main orb */}
-          <div
-            className={`relative flex h-20 w-20 items-center justify-center rounded-full ${
-              status === "processing" ? "animate-pulse" : ""
-            }`}
             style={{
+              position: "absolute",
+              inset: -8,
+              borderRadius: "50%",
               background: orbGradient,
-              boxShadow: `0 0 40px ${
-                status === "error"
-                  ? "rgba(255,71,87,0.3)"
-                  : status === "success"
-                    ? "rgba(0,214,143,0.3)"
-                    : "rgba(255,107,53,0.3)"
-              }`,
+              filter: "blur(16px)",
+              opacity: 0.3,
+              animation: status === "processing" ? "orbIdle 2s ease-in-out infinite" : undefined,
+            }}
+          />
+          <div
+            style={{
+              position: "relative",
+              width: 80,
+              height: 80,
+              borderRadius: "50%",
+              background: orbGradient,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: `0 0 40px ${orbColor}30`,
+              animation: status === "processing" ? "orbIdle 2s ease-in-out infinite" : undefined,
             }}
           >
-            <span className="text-2xl text-white font-bold">
+            <span style={{ fontSize: 28, color: "white", fontWeight: 700 }}>
               {status === "error" ? "\u2717" : status === "success" ? "\u2713" : "..."}
             </span>
           </div>
         </div>
 
         <div>
-          <h1 className="text-lg font-bold" style={{ color: "#f0f0f0" }}>
+          <h1 style={{ fontSize: 18, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>
             {status === "processing"
               ? "Traitement en cours"
               : status === "success"
-                ? "Connexion réussie"
+                ? "Connexion reussie"
                 : "Erreur de connexion"}
           </h1>
-          <p className="mt-2 text-sm" style={{ color: "rgba(255,255,255,0.6)" }}>
+          <p style={{ fontSize: 14, color: "#a39e97", marginTop: 8 }}>
             {message}
           </p>
         </div>
@@ -141,23 +162,30 @@ export default function OAuthCallbackPage() {
         {status !== "processing" && (
           <button
             onClick={() => router.replace("/settings")}
-            className="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium transition-all duration-200"
             style={{
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.06)",
-              backdropFilter: "blur(20px)",
-              color: "rgba(255,255,255,0.6)",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "10px 20px",
+              borderRadius: 10,
+              border: "1px solid #ddd6cc",
+              background: "#ffffff",
+              color: "#6b6560",
+              fontSize: 14,
+              fontWeight: 500,
+              cursor: "pointer",
+              transition: "all 0.15s",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(255,255,255,0.06)";
-              e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)";
+              e.currentTarget.style.borderColor = "#e36b2b";
+              e.currentTarget.style.color = "#e36b2b";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = "rgba(255,255,255,0.03)";
-              e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)";
+              e.currentTarget.style.borderColor = "#ddd6cc";
+              e.currentTarget.style.color = "#6b6560";
             }}
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             Retour aux parametres

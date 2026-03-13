@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { AuthProvider } from "@/context/AuthContext";
+import { AuraSessionProvider } from "@/context/AuraSessionContext";
+import { LayoutShell } from "@/components/LayoutShell";
 import "./globals.css";
 
 const inter = Inter({
@@ -9,7 +11,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "AURA POC",
+  title: "AURA",
   description: "AURA - Assistant Vocal IA",
 };
 
@@ -20,8 +22,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
-      <body className={`${inter.variable} antialiased`}>
-        <AuthProvider>{children}</AuthProvider>
+      <body
+        className={`${inter.variable} antialiased`}
+        style={{ background: "var(--bg)" }}
+      >
+        <AuthProvider>
+          <AuraSessionProvider>
+            <LayoutShell>{children}</LayoutShell>
+          </AuraSessionProvider>
+        </AuthProvider>
       </body>
     </html>
   );

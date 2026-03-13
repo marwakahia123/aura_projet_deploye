@@ -61,7 +61,7 @@ async function callEdgeFunction(
 
 function getCallbackUrl(): string {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  return `${origin}/settings/callback`;
+  return `${origin}/oauth-callback.html`;
 }
 
 export function getGmailOAuthUrl(): string {

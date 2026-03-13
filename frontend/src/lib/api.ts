@@ -72,3 +72,70 @@ export async function sendChat(
 
   return { text, audioBlob };
 }
+
+// Fetch summaries
+export async function fetchSummaries(accessToken: string, limit = 20, offset = 0) {
+  const res = await fetch(`${BACKEND_URL}/api/summaries?limit=${limit}&offset=${offset}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch summaries");
+  return res.json();
+}
+
+// Fetch contacts
+export async function fetchContacts(accessToken: string, search = "") {
+  const url = search
+    ? `${BACKEND_URL}/api/contacts?search=${encodeURIComponent(search)}`
+    : `${BACKEND_URL}/api/contacts`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch contacts");
+  return res.json();
+}
+
+// Create contact
+export async function createContact(accessToken: string, contact: {
+  name: string; email: string;
+  phone: string; company: string; notes: string;
+}) {
+  const res = await fetch(`${BACKEND_URL}/api/contacts`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(contact),
+  });
+  if (!res.ok) throw new Error("Failed to create contact");
+  return res.json();
+}
+
+// Delete contact
+export async function deleteContact(accessToken: string, contactId: string) {
+  const res = await fetch(`${BACKEND_URL}/api/contacts/${contactId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error("Failed to delete contact");
+  return res.json();
+}
+
+// Fetch activity
+export async function fetchActivity(accessToken: string, limit = 50) {
+  const res = await fetch(`${BACKEND_URL}/api/activity?limit=${limit}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch activity");
+  return res.json();
+}
+
+// Fetch discussions
+export async function fetchDiscussions(accessToken: string, search = "", limit = 20) {
+  const url = `${BACKEND_URL}/api/discussions?limit=${limit}${search ? `&search=${encodeURIComponent(search)}` : ""}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch discussions");
+  return res.json();
+}

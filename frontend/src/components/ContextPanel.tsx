@@ -14,75 +14,86 @@ export function ContextPanel({ entries, currentPartial }: ContextPanelProps) {
   if (entries.length === 0 && !currentPartial) return null;
 
   return (
-    <div className="w-full max-w-lg">
-      {/* Header / toggle */}
+    <div style={{ width: "100%", maxWidth: 512 }}>
+      {/* Header toggle */}
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:opacity-80"
         style={{
-          background: expanded ? "rgba(255,255,255,0.03)" : "transparent",
-          border: expanded
-            ? "1px solid rgba(255,255,255,0.06)"
-            : "1px solid transparent",
-          borderRadius: expanded ? "16px 16px 0 0" : "16px",
-          backdropFilter: expanded ? "blur(20px)" : "none",
-          WebkitBackdropFilter: expanded ? "blur(20px)" : "none",
+          display: "flex",
+          width: "100%",
+          alignItems: "center",
+          gap: 8,
+          padding: "8px 12px",
+          textAlign: "left",
+          background: expanded ? "#ffffff" : "transparent",
+          border: expanded ? "1px solid #e8e2d9" : "1px solid transparent",
+          borderRadius: expanded ? "16px 16px 0 0" : 16,
+          cursor: "pointer",
+          fontFamily: "inherit",
         }}
       >
-        {/* Chevron */}
         <span
-          className="inline-block text-[10px] transition-transform duration-200"
           style={{
-            color: "rgba(255,255,255,0.35)",
+            fontSize: 10,
+            color: "#a39e97",
             transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
+            transition: "transform 0.2s",
+            display: "inline-block",
           }}
         >
           &#9654;
         </span>
-
         <span
-          className="text-[11px] font-semibold uppercase tracking-widest"
-          style={{ color: "rgba(255,255,255,0.35)" }}
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            textTransform: "uppercase" as const,
+            letterSpacing: "0.08em",
+            color: "#a39e97",
+          }}
         >
           Contexte ambiant
         </span>
-
         <span
-          className="ml-auto font-mono text-[10px]"
-          style={{ color: "rgba(255,255,255,0.25)" }}
+          style={{
+            marginLeft: "auto",
+            fontSize: 10,
+            fontFamily: "monospace",
+            color: "#c4bdb4",
+          }}
         >
           {entries.length} segment{entries.length !== 1 ? "s" : ""}
         </span>
       </button>
 
-      {/* Expanded body */}
       {expanded && (
         <div
-          className="px-4 pb-4 pt-2"
           style={{
-            background: "rgba(255,255,255,0.03)",
-            border: "1px solid rgba(255,255,255,0.06)",
+            padding: "8px 16px 16px",
+            background: "#ffffff",
+            border: "1px solid #e8e2d9",
             borderTop: "none",
             borderRadius: "0 0 16px 16px",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
           }}
         >
-          <div
-            className="max-h-40 overflow-y-auto pr-1"
-            style={{
-              scrollbarWidth: "thin",
-              scrollbarColor: "rgba(255,255,255,0.08) transparent",
-            }}
-          >
+          <div style={{ maxHeight: 160, overflowY: "auto" }}>
             {entries.map((entry, i) => (
               <div
                 key={i}
-                className="flex items-baseline gap-2 py-[3px]"
+                style={{
+                  display: "flex",
+                  alignItems: "baseline",
+                  gap: 8,
+                  padding: "3px 0",
+                }}
               >
                 <span
-                  className="shrink-0 font-mono text-[10px]"
-                  style={{ color: "rgba(255,255,255,0.25)" }}
+                  style={{
+                    flexShrink: 0,
+                    fontSize: 10,
+                    fontFamily: "monospace",
+                    color: "#c4bdb4",
+                  }}
                 >
                   {entry.timestamp.toLocaleTimeString("fr-FR", {
                     hour: "2-digit",
@@ -90,27 +101,25 @@ export function ContextPanel({ entries, currentPartial }: ContextPanelProps) {
                     second: "2-digit",
                   })}
                 </span>
-                <span
-                  className="text-xs leading-snug"
-                  style={{ color: "rgba(255,255,255,0.35)" }}
-                >
+                <span style={{ fontSize: 12, color: "#6b6560", lineHeight: 1.4 }}>
                   {entry.text}
                 </span>
               </div>
             ))}
 
             {currentPartial && (
-              <div className="flex items-baseline gap-2 py-[3px]">
-                <span
-                  className="shrink-0 font-mono text-[10px]"
-                  style={{ color: "rgba(255,255,255,0.2)" }}
-                >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "baseline",
+                  gap: 8,
+                  padding: "3px 0",
+                }}
+              >
+                <span style={{ flexShrink: 0, fontSize: 10, fontFamily: "monospace", color: "#c4bdb4" }}>
                   ...
                 </span>
-                <span
-                  className="text-xs italic leading-snug"
-                  style={{ color: "rgba(255,255,255,0.25)" }}
-                >
+                <span style={{ fontSize: 12, fontStyle: "italic", color: "#a39e97", lineHeight: 1.4 }}>
                   {currentPartial}
                 </span>
               </div>

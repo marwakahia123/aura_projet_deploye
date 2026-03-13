@@ -1,55 +1,62 @@
 "use client";
 
 import type { AppState } from "./StatusBar";
-import { COLORS } from "@/lib/constants";
 
 interface AuraOrbProps {
   state: AppState;
   volume: number;
+  size?: number;
 }
 
 const STATE_CONFIG: Record<
   AppState,
-  { color: string; glowColor: string; coreColor: string }
+  { gradient: string; color: string; glowColor: string; coreColor: string }
 > = {
   initializing: {
-    color: "#6b7280",
-    glowColor: "#6b728060",
-    coreColor: "#9ca3af",
+    gradient: "radial-gradient(circle at 35% 35%, #d4c4b0, #b8a896, #a39e97)",
+    color: "#a39e97",
+    glowColor: "#a39e9740",
+    coreColor: "#d4c4b0",
   },
   idle: {
-    color: "#4f8fff",
-    glowColor: "#4f8fff50",
-    coreColor: "#93bbff",
+    gradient: "radial-gradient(circle at 35% 35%, #f5a623, #f08c42, #e36b2b)",
+    color: "#e36b2b",
+    glowColor: "#e36b2b40",
+    coreColor: "#f5a623",
   },
   listening: {
-    color: "#00d68f",
-    glowColor: "#00d68f60",
-    coreColor: "#5dffc2",
+    gradient: "radial-gradient(circle at 30% 30%, #4ade80, #22c55e, #16a34a)",
+    color: "#22c55e",
+    glowColor: "#22c55e40",
+    coreColor: "#4ade80",
   },
   thinking: {
-    color: "#ffb020",
-    glowColor: "#ffb02050",
-    coreColor: "#ffd580",
+    gradient: "radial-gradient(circle at 30% 30%, #fbbf24, #f59e0b, #d97706)",
+    color: "#f59e0b",
+    glowColor: "#f59e0b40",
+    coreColor: "#fbbf24",
   },
   speaking: {
+    gradient: "radial-gradient(circle at 30% 30%, #c4b5fd, #a78bfa, #7c3aed)",
     color: "#a78bfa",
-    glowColor: "#a78bfa50",
-    coreColor: "#d4c4ff",
+    glowColor: "#a78bfa40",
+    coreColor: "#c4b5fd",
   },
   conversing: {
+    gradient: "radial-gradient(circle at 30% 30%, #67e8f9, #22d3ee, #0891b2)",
     color: "#22d3ee",
-    glowColor: "#22d3ee50",
-    coreColor: "#80efff",
+    glowColor: "#22d3ee40",
+    coreColor: "#67e8f9",
   },
   error: {
-    color: "#ff4757",
-    glowColor: "#ff475740",
-    coreColor: "#ff8a94",
+    gradient: "radial-gradient(circle at 30% 30%, #fca5a5, #ef4444, #dc2626)",
+    color: "#ef4444",
+    glowColor: "#ef444440",
+    coreColor: "#fca5a5",
   },
 };
 
-export function AuraOrb({ state, volume }: AuraOrbProps) {
+export function AuraOrb({ state, volume, size = 140 }: AuraOrbProps) {
   const config = STATE_CONFIG[state];
   const isListening = state === "listening";
   const isThinking = state === "thinking";
@@ -59,6 +66,10 @@ export function AuraOrb({ state, volume }: AuraOrbProps) {
   const volumeFactor = isListening ? volume / 100 : 0;
   const orbScale = isListening ? 1 + volumeFactor * 0.2 : 1;
   const glowExpand = isListening ? 1 + volumeFactor * 0.5 : 1;
+
+  // Container is 2x orb size for glow space
+  const containerSize = size * 2;
+  const orbOffset = (containerSize - size) / 2;
 
   // Animation class per state
   const animClass = isError
@@ -91,6 +102,26 @@ export function AuraOrb({ state, volume }: AuraOrbProps) {
             : state === "conversing"
               ? "aura-halo-soft"
               : "";
+
+  // Proportional sizes based on orb size
+  const haloSize = size * 1.1;
+  const haloOffset = (containerSize - haloSize) / 2;
+  const washSize = size * 1.2;
+  const washOffset = (containerSize - washSize) / 2;
+  const ringSize = size * 1.12;
+  const ringOffset = (containerSize - ringSize) / 2;
+  const ring2Size = size * 1.14;
+  const ring2Offset = (containerSize - ring2Size) / 2;
+  const highlightW = size * 0.8;
+  const highlightH = size * 0.4;
+  const highlightLeft = orbOffset + size * 0.06;
+  const highlightTop = orbOffset + size * 0.04;
+  const coreSize = size * 0.3;
+  const coreLeft = orbOffset + size * 0.28;
+  const coreTop = orbOffset + size * 0.26;
+  const specSize = size * 0.12;
+  const specLeft = orbOffset + size * 0.34;
+  const specTop = orbOffset + size * 0.23;
 
   return (
     <>
@@ -182,27 +213,27 @@ export function AuraOrb({ state, volume }: AuraOrbProps) {
 
         /* ─── Particle orbit ─── */
         @keyframes aura-orbit {
-          from { transform: rotate(0deg) translateX(110px) rotate(0deg); }
-          to { transform: rotate(360deg) translateX(110px) rotate(-360deg); }
+          from { transform: rotate(0deg) translateX(80px) rotate(0deg); }
+          to { transform: rotate(360deg) translateX(80px) rotate(-360deg); }
         }
         @keyframes aura-orbit-reverse {
-          from { transform: rotate(180deg) translateX(105px) rotate(-180deg); }
-          to { transform: rotate(-180deg) translateX(105px) rotate(180deg); }
+          from { transform: rotate(180deg) translateX(75px) rotate(-180deg); }
+          to { transform: rotate(-180deg) translateX(75px) rotate(180deg); }
         }
       `}</style>
 
       <div
         className="relative flex items-center justify-center"
-        style={{ width: 280, height: 280 }}
+        style={{ width: containerSize, height: containerSize }}
       >
         {/* ════════ Layer 1: Outer ambient glow ════════ */}
         <div
           className="absolute inset-0 rounded-full transition-all duration-500"
           style={{
             background: `radial-gradient(circle, ${config.glowColor} 0%, transparent 70%)`,
-            filter: `blur(40px)`,
+            filter: "blur(30px)",
             transform: `scale(${glowExpand})`,
-            opacity: isError ? 0.4 : 0.7,
+            opacity: isError ? 0.3 : 0.5,
           }}
         />
 
@@ -210,12 +241,12 @@ export function AuraOrb({ state, volume }: AuraOrbProps) {
         <div
           className="absolute rounded-full transition-all duration-500"
           style={{
-            width: 240,
-            height: 240,
-            left: 20,
-            top: 20,
-            background: `radial-gradient(circle at 40% 40%, ${config.color}30 0%, ${config.color}10 50%, transparent 80%)`,
-            filter: "blur(20px)",
+            width: washSize,
+            height: washSize,
+            left: washOffset,
+            top: washOffset,
+            background: `radial-gradient(circle at 40% 40%, ${config.color}25 0%, ${config.color}08 50%, transparent 80%)`,
+            filter: "blur(15px)",
           }}
         />
 
@@ -223,14 +254,14 @@ export function AuraOrb({ state, volume }: AuraOrbProps) {
         <div
           className={`absolute rounded-full transition-all duration-500 ${haloAnimClass}`}
           style={{
-            width: 220,
-            height: 220,
-            left: 30,
-            top: 30,
-            border: `1.5px solid ${config.color}40`,
+            width: haloSize,
+            height: haloSize,
+            left: haloOffset,
+            top: haloOffset,
+            border: `1.5px solid ${config.color}30`,
             boxShadow: `
-              0 0 20px ${config.color}20,
-              inset 0 0 20px ${config.color}10
+              0 0 15px ${config.color}15,
+              inset 0 0 15px ${config.color}08
             `,
           }}
         />
@@ -241,10 +272,10 @@ export function AuraOrb({ state, volume }: AuraOrbProps) {
             <div
               className="absolute rounded-full aura-spin"
               style={{
-                width: 224,
-                height: 224,
-                left: 28,
-                top: 28,
+                width: ringSize,
+                height: ringSize,
+                left: ringOffset,
+                top: ringOffset,
                 border: "2px solid transparent",
                 borderTopColor: config.color,
                 borderRightColor: `${config.color}60`,
@@ -253,10 +284,10 @@ export function AuraOrb({ state, volume }: AuraOrbProps) {
             <div
               className="absolute rounded-full"
               style={{
-                width: 228,
-                height: 228,
-                left: 26,
-                top: 26,
+                width: ring2Size,
+                height: ring2Size,
+                left: ring2Offset,
+                top: ring2Offset,
                 border: "1px solid transparent",
                 borderBottomColor: `${config.color}50`,
                 borderLeftColor: `${config.color}30`,
@@ -272,33 +303,33 @@ export function AuraOrb({ state, volume }: AuraOrbProps) {
             <div
               className="absolute"
               style={{
-                width: 6,
-                height: 6,
+                width: 5,
+                height: 5,
                 left: "50%",
                 top: "50%",
-                marginLeft: -3,
-                marginTop: -3,
+                marginLeft: -2.5,
+                marginTop: -2.5,
                 borderRadius: "50%",
                 background: config.coreColor,
-                boxShadow: `0 0 8px ${config.color}`,
+                boxShadow: `0 0 6px ${config.color}`,
                 animation: `aura-orbit ${state === "listening" ? "3s" : "5s"} linear infinite`,
-                opacity: 0.8,
+                opacity: 0.7,
               }}
             />
             <div
               className="absolute"
               style={{
-                width: 4,
-                height: 4,
+                width: 3,
+                height: 3,
                 left: "50%",
                 top: "50%",
-                marginLeft: -2,
-                marginTop: -2,
+                marginLeft: -1.5,
+                marginTop: -1.5,
                 borderRadius: "50%",
                 background: config.coreColor,
-                boxShadow: `0 0 6px ${config.color}`,
+                boxShadow: `0 0 4px ${config.color}`,
                 animation: `aura-orbit-reverse ${state === "listening" ? "4s" : "6s"} linear infinite`,
-                opacity: 0.6,
+                opacity: 0.5,
               }}
             />
           </>
@@ -308,25 +339,16 @@ export function AuraOrb({ state, volume }: AuraOrbProps) {
         <div
           className={`absolute rounded-full transition-all duration-500 ${animClass}`}
           style={{
-            width: 200,
-            height: 200,
-            left: 40,
-            top: 40,
-            background: `
-              radial-gradient(
-                circle at 38% 35%,
-                ${config.coreColor}ee 0%,
-                ${config.color}cc 25%,
-                ${config.color}90 50%,
-                ${config.color}50 75%,
-                ${config.color}20 100%
-              )
-            `,
+            width: size,
+            height: size,
+            left: orbOffset,
+            top: orbOffset,
+            background: config.gradient,
             boxShadow: `
-              0 0 40px ${config.color}40,
-              0 0 80px ${config.color}25,
-              inset 0 0 40px ${config.color}30,
-              inset -8px -8px 30px ${config.color}20
+              0 0 30px ${config.color}30,
+              0 0 60px ${config.color}18,
+              inset 0 0 30px ${config.color}20,
+              inset -6px -6px 20px ${config.color}15
             `,
             transform: `scale(${orbScale})`,
           }}
@@ -336,14 +358,14 @@ export function AuraOrb({ state, volume }: AuraOrbProps) {
         <div
           className="absolute rounded-full pointer-events-none transition-all duration-500"
           style={{
-            width: 160,
-            height: 80,
-            left: 52,
-            top: 48,
+            width: highlightW,
+            height: highlightH,
+            left: highlightLeft,
+            top: highlightTop,
             background: `linear-gradient(
               180deg,
-              rgba(255, 255, 255, 0.12) 0%,
-              rgba(255, 255, 255, 0.04) 60%,
+              rgba(255, 255, 255, 0.18) 0%,
+              rgba(255, 255, 255, 0.06) 60%,
               transparent 100%
             )`,
             borderRadius: "50%",
@@ -355,17 +377,17 @@ export function AuraOrb({ state, volume }: AuraOrbProps) {
         <div
           className="absolute rounded-full pointer-events-none transition-all duration-500"
           style={{
-            width: 60,
-            height: 60,
-            left: 96,
-            top: 92,
+            width: coreSize,
+            height: coreSize,
+            left: coreLeft,
+            top: coreTop,
             background: `radial-gradient(
               circle,
               ${config.coreColor}cc 0%,
               ${config.coreColor}40 40%,
               transparent 70%
             )`,
-            filter: "blur(8px)",
+            filter: "blur(6px)",
             animation: isError ? "none" : "aura-core-shimmer 3s ease-in-out infinite",
             transform: `scale(${orbScale})`,
           }}
@@ -375,17 +397,17 @@ export function AuraOrb({ state, volume }: AuraOrbProps) {
         <div
           className="absolute rounded-full pointer-events-none transition-all duration-500"
           style={{
-            width: 24,
-            height: 24,
-            left: 108,
-            top: 86,
+            width: specSize,
+            height: specSize,
+            left: specLeft,
+            top: specTop,
             background: `radial-gradient(
               circle,
-              rgba(255, 255, 255, 0.35) 0%,
-              rgba(255, 255, 255, 0.08) 50%,
+              rgba(255, 255, 255, 0.4) 0%,
+              rgba(255, 255, 255, 0.1) 50%,
               transparent 100%
             )`,
-            filter: "blur(4px)",
+            filter: "blur(3px)",
             transform: `scale(${orbScale})`,
           }}
         />
