@@ -4,18 +4,30 @@ class PCMProcessor extends AudioWorkletProcessor {
     this.buffer = [];
     this.bufferSize = 0;
     // Send chunks every ~100ms worth of samples at native sample rate
-    // At 48000 Hz: 48000 * 0.1 = 4800 samples
-    // At 44100 Hz: 44100 * 0.1 = 4410 samples
     this.chunkThreshold = Math.floor(sampleRate * 0.1);
+
+    // Resampling config pour le wake word
+    this.targetRate = 16000;
+    this.resampleRatio = this.targetRate / sampleRate;
+  }
+
+  downsample(samples, fromRate, toRate) {
+    if (fromRate === toRate) return samples;
+    const ratio = fromRate / toRate;
+    const newLength = Math.floor(samples.length / ratio);
+    const result = new Int16Array(newLength);
+    for (let i = 0; i < newLength; i++) {
+      result[i] = samples[Math.floor(i * ratio)];
+    }
+    return result;
   }
 
   process(inputs) {
     const input = inputs[0];
     if (!input || !input[0]) return true;
 
-    const channelData = input[0]; // mono, first channel
+    const channelData = input[0];
 
-    // Convert Float32 [-1, 1] to Int16 [-32768, 32767]
     const int16 = new Int16Array(channelData.length);
     for (let i = 0; i < channelData.length; i++) {
       const s = Math.max(-1, Math.min(1, channelData[i]));
@@ -26,7 +38,6 @@ class PCMProcessor extends AudioWorkletProcessor {
     this.bufferSize += int16.length;
 
     if (this.bufferSize >= this.chunkThreshold) {
-      // Merge all buffered chunks
       const merged = new Int16Array(this.bufferSize);
       let offset = 0;
       for (const chunk of this.buffer) {
@@ -34,9 +45,19 @@ class PCMProcessor extends AudioWorkletProcessor {
         offset += chunk.length;
       }
 
+      // Downsample AVANT de transférer le buffer (sinon merged est détaché)
+      const downsampled = this.downsample(merged, sampleRate, this.targetRate);
+
+      // Envoyer le chunk original (48kHz) pour le STT
       this.port.postMessage(
         { type: "pcm", samples: merged, sampleRate: sampleRate },
         [merged.buffer]
+      );
+
+      // Envoyer la version 16kHz pour le wake word
+      this.port.postMessage(
+        { type: "pcm16k", samples: downsampled, sampleRate: this.targetRate },
+        [downsampled.buffer]
       );
 
       this.buffer = [];

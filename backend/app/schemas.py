@@ -11,6 +11,7 @@ class TranscriptionSegment(BaseModel):
 class ChatRequest(BaseModel):
     command: str
     context: list[TranscriptionSegment] = []
+    user_timezone: str = "UTC"  # e.g. "Europe/Paris"
 
 
 class ChatResponse(BaseModel):

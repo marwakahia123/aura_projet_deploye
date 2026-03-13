@@ -11,8 +11,7 @@
   "dependencies": {
     "@elevenlabs/elevenlabs-js": "^2.36.0",
     "@elevenlabs/react": "^0.14.1",
-    "@picovoice/porcupine-web": "^4.0.0",
-    "@picovoice/web-voice-processor": "^4.0.9",
+    "@supabase/supabase-js": "^2.99.1",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3"

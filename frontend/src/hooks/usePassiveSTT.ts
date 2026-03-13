@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchSttToken } from "@/lib/api";
 import { int16ToBase64 } from "@/lib/audioUtils";
 import { contextBuffer } from "@/lib/contextBuffer";
+import { contextPersistence } from "@/lib/contextPersistence";
 import { TOKEN_REFRESH_MS } from "@/lib/constants";
 
 interface UsePassiveSTTReturn {
@@ -91,6 +92,7 @@ export function usePassiveSTT(): UsePassiveSTTReturn {
             case "committed_transcript_with_timestamps":
               if (data.text) {
                 contextBuffer.add(data.text);
+                contextPersistence.persistSegment(data.text, new Date());
                 setTranscriptCount(contextBuffer.size);
                 setCurrentPartial("");
               }

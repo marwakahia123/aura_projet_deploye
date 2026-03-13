@@ -12,6 +12,7 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const urlRef = useRef<string | null>(null);
+  const resolveRef = useRef<(() => void) | null>(null);
 
   const cleanup = useCallback(() => {
     if (audioRef.current) {
@@ -23,6 +24,11 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
     if (urlRef.current) {
       URL.revokeObjectURL(urlRef.current);
       urlRef.current = null;
+    }
+    // Resolve any pending play() promise so callers don't hang
+    if (resolveRef.current) {
+      resolveRef.current();
+      resolveRef.current = null;
     }
     setIsPlaying(false);
   }, []);
@@ -38,18 +44,16 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
       audioRef.current = audio;
 
       return new Promise<void>((resolve) => {
+        resolveRef.current = resolve;
         audio.onended = () => {
           cleanup();
-          resolve();
         };
         audio.onerror = () => {
           cleanup();
-          resolve();
         };
         setIsPlaying(true);
         audio.play().catch(() => {
           cleanup();
-          resolve();
         });
       });
     },

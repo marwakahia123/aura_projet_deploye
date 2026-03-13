@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type PCMChunkCallback = (samples: Int16Array, sampleRate: number) => void;
+type PCM16kCallback = (samples: Int16Array) => void;
 
 interface UseAudioCaptureReturn {
   stream: MediaStream | null;
@@ -12,6 +13,7 @@ interface UseAudioCaptureReturn {
   isActive: boolean;
   error: string | null;
   onPCMChunk: (callback: PCMChunkCallback) => void;
+  onPCM16kChunk: (callback: PCM16kCallback) => void;
   requestMicAccess: () => Promise<{ stream: MediaStream; sampleRate: number }>;
   stopMic: () => void;
 }
@@ -25,6 +27,7 @@ export function useAudioCapture(): UseAudioCaptureReturn {
   const [error, setError] = useState<string | null>(null);
 
   const pcmCallbackRef = useRef<PCMChunkCallback | null>(null);
+  const pcm16kCallbackRef = useRef<PCM16kCallback | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animFrameRef = useRef<number>(0);
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
@@ -32,6 +35,10 @@ export function useAudioCapture(): UseAudioCaptureReturn {
 
   const onPCMChunk = useCallback((callback: PCMChunkCallback) => {
     pcmCallbackRef.current = callback;
+  }, []);
+
+  const onPCM16kChunk = useCallback((callback: PCM16kCallback) => {
+    pcm16kCallbackRef.current = callback;
   }, []);
 
   const updateVolume = useCallback(() => {
@@ -74,6 +81,9 @@ export function useAudioCapture(): UseAudioCaptureReturn {
       workletNode.port.onmessage = (event) => {
         if (event.data.type === "pcm" && pcmCallbackRef.current) {
           pcmCallbackRef.current(event.data.samples, event.data.sampleRate);
+        }
+        if (event.data.type === "pcm16k" && pcm16kCallbackRef.current) {
+          pcm16kCallbackRef.current(event.data.samples);
         }
       };
       source.connect(workletNode);
@@ -127,6 +137,7 @@ export function useAudioCapture(): UseAudioCaptureReturn {
     isActive,
     error,
     onPCMChunk,
+    onPCM16kChunk,
     requestMicAccess,
     stopMic,
   };

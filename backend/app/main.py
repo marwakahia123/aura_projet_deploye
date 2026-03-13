@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes import chat, health, stt_token
+from app.routes import chat, health, stt_token, wakeword
 
 app = FastAPI(title="AURA POC Backend")
 
@@ -17,3 +17,4 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(stt_token.router)
 app.include_router(chat.router)
+app.include_router(wakeword.router)
