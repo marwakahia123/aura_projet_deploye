@@ -5,10 +5,11 @@ import os
 import numpy as np
 from openwakeword.model import Model
 
-# En Docker le volume est monté sur /openwake, sinon on remonte depuis backend/../openwake/
-_LOCAL_PATH = str(Path(__file__).resolve().parents[3] / "openwake" / "Aura_test.onnx")
-_DOCKER_PATH = "/openwake/Aura_test.onnx"
-_MODEL_PATH = os.getenv("WAKEWORD_MODEL_PATH", _DOCKER_PATH if os.path.exists(_DOCKER_PATH) else _LOCAL_PATH)
+# Use built-in "hey jarvis" model (well-trained) as fallback,
+# or a custom model via WAKEWORD_MODEL_PATH env var
+_CUSTOM_DOCKER = "/openwake/Aura_test.onnx"
+_CUSTOM_LOCAL = str(Path(__file__).resolve().parents[3] / "openwake" / "Aura_test.onnx")
+_CUSTOM_PATH = os.getenv("WAKEWORD_MODEL_PATH", "")
 
 
 class WakeWordService:
@@ -17,12 +18,24 @@ class WakeWordService:
     _instance = None
 
     def __init__(self):
-        self.model = Model(
-            wakeword_models=[_MODEL_PATH],
-            inference_framework="onnx",
-        )
+        # Try custom model, fallback to built-in "hey_jarvis"
+        custom = _CUSTOM_PATH or (_CUSTOM_DOCKER if os.path.exists(_CUSTOM_DOCKER) else _CUSTOM_LOCAL)
+        use_custom = custom and os.path.exists(custom)
+
+        if use_custom:
+            self.model = Model(
+                wakeword_models=[custom, "hey_jarvis_v0.1"],
+                inference_framework="onnx",
+            )
+        else:
+            self.model = Model(
+                wakeword_models=["hey_jarvis_v0.1"],
+                inference_framework="onnx",
+            )
+
         self.model_names = list(self.model.models.keys())
-        self.threshold = 0.3
+        self.threshold = 0.5
+        print(f"[WakeWordService] Models: {self.model_names}, threshold: {self.threshold}")
 
     @classmethod
     def get_instance(cls):
