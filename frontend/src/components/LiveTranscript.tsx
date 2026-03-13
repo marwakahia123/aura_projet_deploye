@@ -15,41 +15,51 @@ export function LiveTranscript({
 
   return (
     <div
-      className="w-full max-w-lg rounded-2xl p-5"
       style={{
-        background: "rgba(255,255,255,0.03)",
-        border: "1px solid rgba(255,255,255,0.06)",
-        backdropFilter: "blur(12px)",
+        width: "100%",
+        maxWidth: 512,
+        padding: 20,
+        background: "#ffffff",
+        border: "1px solid #e8e2d9",
+        borderRadius: 16,
       }}
     >
       {committedText && (
-        <p className="text-lg font-light text-white">
+        <p style={{ fontSize: 18, fontWeight: 300, color: "#1a1a1a", margin: 0 }}>
           {committedText}
         </p>
       )}
       {partialText && (
-        <p
-          className="text-lg font-light"
-          style={{ color: "rgba(255,255,255,0.5)" }}
-        >
+        <p style={{ fontSize: 18, fontWeight: 300, color: "#a39e97", margin: 0 }}>
           {partialText}
           {isActive && (
             <span
-              className="ml-0.5 inline-block h-5 w-0.5 animate-pulse"
-              style={{ background: "#ff9a34" }}
+              style={{
+                display: "inline-block",
+                width: 2,
+                height: 20,
+                marginLeft: 2,
+                background: "#e36b2b",
+                animation: "orbIdle 1s ease-in-out infinite",
+                verticalAlign: "text-bottom",
+              }}
             />
           )}
         </p>
       )}
       {isActive && !partialText && !committedText && (
-        <p
-          className="text-lg font-light"
-          style={{ color: "rgba(255,255,255,0.3)" }}
-        >
-          En ecoute...
+        <p style={{ fontSize: 18, fontWeight: 300, color: "#a39e97", margin: 0 }}>
+          En écoute...
           <span
-            className="ml-0.5 inline-block h-5 w-0.5 animate-pulse"
-            style={{ background: "#ff9a34" }}
+            style={{
+              display: "inline-block",
+              width: 2,
+              height: 20,
+              marginLeft: 2,
+              background: "#e36b2b",
+              animation: "orbIdle 1s ease-in-out infinite",
+              verticalAlign: "text-bottom",
+            }}
           />
         </p>
       )}

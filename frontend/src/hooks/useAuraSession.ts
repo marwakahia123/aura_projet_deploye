@@ -31,8 +31,10 @@ interface UseAuraSessionReturn {
   history: ConversationEntry[];
   fallbackMode: string;
   errors: string[];
+  muted: boolean;
   initialize: () => Promise<void>;
   triggerWakeWord: () => void;
+  toggleMute: () => void;
 }
 
 function playBeep() {
@@ -59,6 +61,9 @@ export function useAuraSession(): UseAuraSessionReturn {
   const [passiveEntries, setPassiveEntries] = useState<
     { text: string; timestamp: Date }[]
   >([]);
+
+  const [muted, setMuted] = useState(false);
+  const mutedRef = useRef(false);
 
   const stateRef = useRef<AppState>("initializing");
   const audioRoutingRef = useRef<"passive" | "command">("passive");
@@ -233,9 +238,25 @@ export function useAuraSession(): UseAuraSessionReturn {
     clearConversationTimer,
   ]);
 
+  const toggleMute = useCallback(() => {
+    const newMuted = !mutedRef.current;
+    mutedRef.current = newMuted;
+    setMuted(newMuted);
+    if (newMuted) {
+      // Pause passive STT when muted
+      passiveSTT.pause();
+    } else if (stateRef.current === "idle") {
+      // Resume passive STT when unmuted (only if idle)
+      passiveSTT.resume();
+    }
+  }, [passiveSTT]);
+
   // Route PCM chunks to the correct STT + barge-in / conversation VAD
   const handlePCMChunk = useCallback(
     (samples: Int16Array, sampleRate: number) => {
+      // Skip all audio processing when muted
+      if (mutedRef.current) return;
+
       const currentState = stateRef.current;
 
       // --- Barge-in / Conversation VAD ---
@@ -366,7 +387,9 @@ export function useAuraSession(): UseAuraSessionReturn {
     history,
     fallbackMode: wakeword.fallbackMode,
     errors,
+    muted,
     initialize,
     triggerWakeWord: handleWakeWord,
+    toggleMute,
   };
 }

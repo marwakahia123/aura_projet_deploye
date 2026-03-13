@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useAuthContext } from "@/context/AuthContext";
-import { useAuraSession } from "@/hooks/useAuraSession";
+import { useAuraSessionContext } from "@/context/AuraSessionContext";
 import { AuraOrb } from "@/components/AuraOrb";
 import { StatusBar } from "@/components/StatusBar";
 import { VolumeIndicator } from "@/components/VolumeIndicator";
@@ -13,145 +13,160 @@ import { ContextPanel } from "@/components/ContextPanel";
 export default function Home() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuthContext();
-  const session = useAuraSession();
+  const session = useAuraSessionContext();
 
-  // Redirect to login if not authenticated
   if (!authLoading && !user) {
     router.replace("/login");
     return null;
   }
 
-  // Show loading while checking auth
-  if (authLoading) {
+  if (authLoading || session.state === "initializing") {
     return (
       <div
-        className="flex min-h-screen items-center justify-center"
-        style={{ background: "#0a0a0f" }}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          minHeight: "100vh",
+          gap: 24,
+          background: "#faf6f1",
+        }}
       >
         <div
-          className="h-20 w-20 animate-pulse rounded-full"
           style={{
-            background: "linear-gradient(135deg, #ff9a34, #f5773d, #f35f4f)",
-            boxShadow: "0 0 60px rgba(255,154,52,0.3)",
+            width: 80,
+            height: 80,
+            borderRadius: "50%",
+            background: "linear-gradient(135deg, #e36b2b, #f08c42, #f5a623)",
+            boxShadow: "0 0 60px rgba(227,107,43,0.2)",
+            animation: "orbIdle 3s ease-in-out infinite",
           }}
         />
+        <p style={{ fontSize: 14, color: "#a39e97", fontWeight: 300 }}>
+          Initialisation...
+        </p>
       </div>
     );
   }
 
-  // Before initialization
-  if (session.state === "initializing" && session.volume === 0) {
-    return (
-      <div
-        className="flex min-h-screen flex-col items-center justify-center gap-10"
-        style={{ background: "#0a0a0f" }}
-      >
-        <div className="flex flex-col items-center gap-3">
-          <h1
-            className="text-5xl font-bold tracking-[0.3em]"
-            style={{ color: "#ff8c42" }}
-          >
-            AURA
-          </h1>
-          <p
-            className="text-sm font-light tracking-widest uppercase"
-            style={{ color: "rgba(255,255,255,0.35)" }}
-          >
-            Assistant Vocal IA
-          </p>
-        </div>
-
-        <div
-          className="h-28 w-28 animate-pulse rounded-full"
-          style={{
-            background: "radial-gradient(circle at 35% 35%, #ffa726, #ff6b35)",
-            boxShadow: "0 0 80px rgba(255,154,52,0.25)",
-          }}
-        />
-
-        <button
-          onClick={session.initialize}
-          className="rounded-full px-10 py-4 text-sm font-semibold tracking-wider text-white uppercase transition-all duration-300 hover:scale-105"
-          style={{
-            background: "linear-gradient(135deg, #ff6b35, #ff8c42)",
-            boxShadow: "0 0 30px rgba(255,107,53,0.3)",
-          }}
-        >
-          Demarrer AURA
-        </button>
-      </div>
-    );
-  }
-
+  // ── Active session ──
   return (
     <div
-      className="flex min-h-screen flex-col"
-      style={{ background: "#0a0a0f" }}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        background: "#faf6f1",
+      }}
     >
-      {/* Header */}
-      <header
-        className="flex w-full shrink-0 items-center justify-between px-6 py-4"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+      <div
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
       >
-        <h1
-          className="text-xl font-bold tracking-[0.2em]"
-          style={{ color: "#ff8c42" }}
+        {/* Orb section */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 12,
+            paddingTop: 40,
+            paddingBottom: 16,
+          }}
         >
-          AURA
-        </h1>
-        <div className="flex items-center gap-4">
-          <span className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
-            {user?.email}
-          </span>
-          <button
-            onClick={() => router.push("/settings")}
-            className="rounded-lg p-2 transition-colors duration-200 hover:bg-white/5"
-            style={{ border: "1px solid rgba(255,255,255,0.1)" }}
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="rgba(255,255,255,0.5)"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-          </button>
-        </div>
-      </header>
-
-      {/* Main content */}
-      <div className="flex flex-1 flex-col items-center overflow-y-auto">
-        {/* Orb section - takes available space but not too much */}
-        <div className="flex flex-col items-center gap-4 pt-6 pb-4">
-          <AuraOrb state={session.state} volume={session.volume} />
+          <AuraOrb state={session.state} volume={session.volume} size={140} />
           <StatusBar state={session.state} fallbackMode={session.fallbackMode} />
           <VolumeIndicator volume={session.volume} />
+
+          {/* Mute button under the orb */}
+          <button
+            onClick={session.toggleMute}
+            title={session.muted ? "Activer le micro" : "Couper le micro"}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 44,
+              height: 44,
+              borderRadius: "50%",
+              border: session.muted ? "2px solid #d44040" : "1px solid #ddd6cc",
+              background: session.muted ? "rgba(212,64,64,0.08)" : "#ffffff",
+              color: session.muted ? "#d44040" : "#a39e97",
+              cursor: "pointer",
+              marginTop: 4,
+              transition: "all 0.2s",
+              boxShadow: session.muted
+                ? "0 0 12px rgba(212,64,64,0.15)"
+                : "0 1px 4px rgba(0,0,0,0.06)",
+            }}
+            onMouseEnter={(e) => {
+              if (!session.muted) {
+                e.currentTarget.style.borderColor = "#a39e97";
+                e.currentTarget.style.color = "#6b6560";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!session.muted) {
+                e.currentTarget.style.borderColor = "#ddd6cc";
+                e.currentTarget.style.color = "#a39e97";
+              }
+            }}
+          >
+            {session.muted ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="1" y1="1" x2="23" y2="23" />
+                <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
+                <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .67-.08 1.32-.22 1.94" />
+                <line x1="12" y1="19" x2="12" y2="23" />
+                <line x1="8" y1="23" x2="16" y2="23" />
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                <line x1="12" y1="19" x2="12" y2="23" />
+                <line x1="8" y1="23" x2="16" y2="23" />
+              </svg>
+            )}
+          </button>
         </div>
 
-        {/* Push-to-talk button */}
+        {/* Push-to-talk */}
         {session.fallbackMode === "push-to-talk" &&
           (session.state === "idle" || session.state === "conversing") && (
           <button
             onClick={session.triggerWakeWord}
-            className="mb-4 rounded-full px-8 py-3 text-sm font-medium tracking-wider text-white uppercase transition-all duration-300 hover:scale-105"
             style={{
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(0,214,143,0.4)",
-              boxShadow: "0 0 20px rgba(0,214,143,0.15)",
+              marginBottom: 16,
+              padding: "12px 32px",
+              borderRadius: 50,
+              border: "1px solid #2d9e6a",
+              background: "#ffffff",
+              color: "#2d9e6a",
+              fontSize: 14,
+              fontWeight: 500,
+              letterSpacing: "0.05em",
+              textTransform: "uppercase" as const,
+              cursor: "pointer",
+              boxShadow: "0 2px 8px rgba(45,158,106,0.12)",
+              transition: "transform 0.2s",
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.05)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
           >
             Parler
           </button>
         )}
 
-        {/* Live transcript (command mode) */}
-        <div className="w-full max-w-lg px-4">
+        {/* Live transcript */}
+        <div style={{ width: "100%", maxWidth: 512, padding: "0 16px" }}>
           <LiveTranscript
             partialText={session.commandPartial}
             committedText={session.commandCommitted}
@@ -162,26 +177,125 @@ export default function Home() {
         {/* Errors */}
         {session.errors.length > 0 && (
           <div
-            className="mx-4 mt-4 w-full max-w-lg rounded-xl p-3"
             style={{
-              background: "rgba(255,71,87,0.08)",
-              border: "1px solid rgba(255,71,87,0.2)",
+              margin: "16px 16px 0",
+              width: "100%",
+              maxWidth: 512,
+              padding: 12,
+              borderRadius: 12,
+              background: "rgba(212,64,64,0.06)",
+              border: "1px solid rgba(212,64,64,0.15)",
             }}
           >
             {session.errors.map((err, i) => (
-              <p key={i} className="text-xs" style={{ color: "#ff6b6b" }}>
+              <p key={i} style={{ fontSize: 12, color: "#d44040", margin: 0 }}>
                 {err}
               </p>
             ))}
           </div>
         )}
 
-        {/* Panels section */}
-        <div className="mt-4 w-full max-w-lg space-y-3 px-4 pb-8">
-          {/* Conversation history */}
-          <TranscriptPanel history={session.history} />
+        {/* Messages / history */}
+        <div style={{ marginTop: 16, width: "100%", maxWidth: 960, padding: "0 32px 32px" }}>
+          {session.history.map((entry) => (
+            <div key={entry.id} style={{ marginBottom: 20, animation: "msgIn 0.3s ease-out" }}>
+              {/* User */}
+              <div style={{ display: "flex", gap: 12, marginBottom: 12, flexDirection: "row-reverse" }}>
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: "50%",
+                    background: "#1a1a1a",
+                    color: "white",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    flexShrink: 0,
+                    marginTop: 2,
+                  }}
+                >
+                  {user?.email?.charAt(0).toUpperCase() || "U"}
+                </div>
+                <div style={{ maxWidth: "80%" }}>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: "#6b6560",
+                      marginBottom: 4,
+                      textAlign: "right",
+                    }}
+                  >
+                    Vous
+                  </div>
+                  <div
+                    style={{
+                      display: "inline-block",
+                      float: "right",
+                      padding: "10px 14px",
+                      borderRadius: "16px 16px 4px 16px",
+                      background: "#e36b2b",
+                      color: "white",
+                      fontSize: 14,
+                      lineHeight: 1.7,
+                    }}
+                  >
+                    {entry.command}
+                  </div>
+                </div>
+              </div>
+              {/* Aura */}
+              {entry.response && (
+                <div style={{ display: "flex", gap: 12 }}>
+                  <div
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: "50%",
+                      background: "linear-gradient(135deg, #e36b2b, #f08c42, #f5a623)",
+                      color: "white",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      flexShrink: 0,
+                      marginTop: 2,
+                    }}
+                  >
+                    A
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0, maxWidth: "90%" }}>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: "#6b6560",
+                        marginBottom: 4,
+                      }}
+                    >
+                      Aura
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 14,
+                        lineHeight: 1.7,
+                        color: "#1a1a1a",
+                      }}
+                    >
+                      {entry.response}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
 
-          {/* Passive context - always visible when has entries */}
+          {/* Transcript panel (passive context) */}
+          <TranscriptPanel history={session.history} />
           <ContextPanel
             entries={session.passiveEntries}
             currentPartial={session.passivePartial}
