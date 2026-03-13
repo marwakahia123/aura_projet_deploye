@@ -5,11 +5,9 @@ import os
 import numpy as np
 from openwakeword.model import Model
 
-# Use built-in "hey jarvis" model (well-trained) as fallback,
-# or a custom model via WAKEWORD_MODEL_PATH env var
 _CUSTOM_DOCKER = "/openwake/Aura_test.onnx"
 _CUSTOM_LOCAL = str(Path(__file__).resolve().parents[3] / "openwake" / "Aura_test.onnx")
-_CUSTOM_PATH = os.getenv("WAKEWORD_MODEL_PATH", "")
+_MODEL_PATH = os.getenv("WAKEWORD_MODEL_PATH", _CUSTOM_DOCKER if os.path.exists(_CUSTOM_DOCKER) else _CUSTOM_LOCAL)
 
 
 class WakeWordService:
@@ -18,23 +16,13 @@ class WakeWordService:
     _instance = None
 
     def __init__(self):
-        # Try custom model, fallback to built-in "hey_jarvis"
-        custom = _CUSTOM_PATH or (_CUSTOM_DOCKER if os.path.exists(_CUSTOM_DOCKER) else _CUSTOM_LOCAL)
-        use_custom = custom and os.path.exists(custom)
-
-        if use_custom:
-            self.model = Model(
-                wakeword_models=[custom, "hey_jarvis_v0.1"],
-                inference_framework="onnx",
-            )
-        else:
-            self.model = Model(
-                wakeword_models=["hey_jarvis_v0.1"],
-                inference_framework="onnx",
-            )
-
+        self.model = Model(
+            wakeword_models=[_MODEL_PATH],
+            inference_framework="onnx",
+        )
         self.model_names = list(self.model.models.keys())
-        self.threshold = 0.5
+        self.threshold = 0.3
+        print(f"[WakeWordService] Model: {_MODEL_PATH}")
         print(f"[WakeWordService] Models: {self.model_names}, threshold: {self.threshold}")
 
     @classmethod
