@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
@@ -8,7 +8,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+
+# Install tflite-runtime first (required by openwakeword on Linux), then the rest
+RUN pip install --no-cache-dir tflite-runtime && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Download openwakeword prerequisite models (melspectrogram, embedding, etc.)
 RUN python -c "import openwakeword; openwakeword.utils.download_models()"
