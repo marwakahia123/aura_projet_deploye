@@ -1,17 +1,31 @@
 @import "tailwindcss";
 
 :root {
+  /* Aura Dark Design System */
   --background: #0a0a0f;
-  --foreground: #f1f5f9;
-  --surface: #141420;
-  --surface-hover: #1e1e30;
-  --text-secondary: #94a3b8;
-  --text-muted: #475569;
-  --blue-idle: #3b82f6;
-  --green-listening: #22c55e;
-  --amber-thinking: #f59e0b;
-  --purple-speaking: #8b5cf6;
-  --red-error: #ef4444;
+  --foreground: #f0f0f0;
+  --surface: #13131a;
+  --surface-hover: #1a1a24;
+  --card-glass: rgba(255, 255, 255, 0.03);
+  --border: rgba(255, 255, 255, 0.06);
+  --border-light: rgba(255, 255, 255, 0.03);
+  --text-primary: #f0f0f0;
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --text-muted: rgba(255, 255, 255, 0.35);
+
+  /* Brand */
+  --orange: #ff6b35;
+  --orange-light: #ff8c42;
+  --orange-warm: #ffa726;
+  --brand-gradient: linear-gradient(135deg, #ff6b35, #ff8c42, #ffa726);
+
+  /* Functional */
+  --blue-idle: #4f8fff;
+  --green-listening: #00d68f;
+  --amber-thinking: #ffb020;
+  --purple-speaking: #a78bfa;
+  --cyan-conversing: #22d3ee;
+  --red-error: #ff4757;
 }
 
 @theme inline {
@@ -23,8 +37,131 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* ─── Base ─────────────────────────────────────────────────────────── */
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: "Inter", Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+::selection {
+  background: rgba(255, 107, 53, 0.3);
+  color: #fff;
+}
+
+::-moz-selection {
+  background: rgba(255, 107, 53, 0.3);
+  color: #fff;
+}
+
+/* ─── Scrollbar ────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+/* ─── Glass Cards ──────────────────────────────────────────────────── */
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.glass-card-hover {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.glass-card-hover:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ─── Text Gradient ────────────────────────────────────────────────── */
+
+.text-gradient {
+  background: linear-gradient(135deg, #ff6b35, #ff8c42, #ffa726);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ─── Animations ───────────────────────────────────────────────────── */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ─── Orb Glow ─────────────────────────────────────────────────────── */
+
+@keyframes pulseGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(255, 107, 53, 0.15),
+      0 0 60px rgba(255, 107, 53, 0.05);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(255, 107, 53, 0.3),
+      0 0 80px rgba(255, 107, 53, 0.1);
+  }
+}
+
+.orb-glow {
+  animation: pulseGlow 3s ease-in-out infinite;
 }

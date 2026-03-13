@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AURA - Design UX POC</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    /* Hallia Design System */
+    --bg: #fefdfd;               /* neutral-50 */
+    --surface: #f9f7f5;          /* neutral-100 */
+    --surface-hover: #f4f1ee;    /* neutral-200 */
+    --border: #dbd8d5;           /* neutral-400 */
+    --border-light: #f1edea;     /* neutral-300 */
+    --text: #191918;             /* neutral-900 */
+    --text-secondary: #656462;   /* neutral-700 */
+    --text-muted: #aba9a6;       /* neutral-500 */
+
+    /* Brand Colors */
+    --orange: #ff9a34;           /* brand-orange-500 */
+    --orange-light: #ffb35c;     /* brand-orange-400 */
+    --orange-dark: #f5773d;      /* brand-orange-600 */
+    --orange-deep: #f35f4f;      /* brand-orange-700 */
+    --orange-glow: rgba(255, 154, 52, 0.2);
+    --purple: #9f78ff;           /* brand-purple-500 */
+    --purple-light: #d1aaff;     /* brand-purple-400 */
+    --purple-dark: #815af3;      /* brand-purple-600 */
+    --green: #78c8ba;            /* brand-green-400 */
+    --green-dark: #508c7e;       /* brand-green-500 */
+    --green-deep: #005042;       /* brand-green-600 */
+    --blue: #5d98ff;             /* brand-blue-400 */
+    --blue-dark: #215ce4;        /* brand-blue-500 */
+
+    /* Accent */
+    --accent-green: #00bc7d;     /* accent-green-500 */
+    --accent-red: #fb2c36;       /* accent-red-500 */
+    --accent-blue: #2b7fff;      /* accent-blue-500 */
+
+    /* Gradient */
+    --brand-gradient: linear-gradient(135deg, #ff9a34, #f5773d, #f35f4f);
+    --brand-gradient-soft: linear-gradient(135deg, #ffb35c, #ff9a34);
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ======== NAVIGATION TABS ======== */
+  .nav-tabs {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    display: flex;
+    background: white;
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+  }
+  .nav-tabs button {
+    padding: 14px 24px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .nav-tabs button:hover { color: var(--text); }
+  .nav-tabs button.active {
+    color: var(--orange);
+    border-bottom-color: var(--orange);
+  }
+
+  /* ======== SCREENS ======== */
+  .screen { display: none; padding-top: 60px; min-height: 100vh; }
+  .screen.active { display: block; }
+
+  .screen-title {
+    text-align: center;
+    padding: 30px 20px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--orange-dark);
+  }
+  .screen-desc {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-bottom: 30px;
+  }
+
+  /* ======== ECRAN 1 : LOGIN ======== */
+  .login-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 60px);
+    background: linear-gradient(180deg, #f9f7f5 0%, #fefdfd 50%, rgba(255,154,52,0.04) 100%);
+  }
+  .login-card {
+    width: 100%;
+    max-width: 420px;
+    padding: 48px 40px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    box-shadow: 0 4px 24px rgba(25,25,24,0.06);
+  }
+  .login-logo {
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .login-logo h1 {
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: 6px;
+    background: var(--brand-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .login-logo p {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-top: 4px;
+  }
+  .login-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 28px 0;
+  }
+  .form-group {
+    margin-bottom: 16px;
+  }
+  .form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+  .form-group input {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  .form-group input:focus {
+    border-color: var(--orange);
+    box-shadow: 0 0 0 3px var(--orange-glow);
+  }
+  .btn {
+    width: 100%;
+    padding: 13px 24px;
+    border: none;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: var(--brand-gradient);
+    color: white;
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 20px var(--orange-glow); }
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    margin-top: 12px;
+  }
+  .btn-outline:hover { border-color: var(--text-secondary); color: var(--text); }
+  .login-footer {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .login-footer a {
+    color: var(--orange-dark);
+    text-decoration: none;
+  }
+
+  /* ======== ECRAN 2 : DASHBOARD ======== */
+  .dashboard {
+    display: flex;
+    height: calc(100vh - 60px);
+  }
+  .sidebar {
+    width: 260px;
+    background: white;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 20px 12px;
+    flex-shrink: 0;
+  }
+  .sidebar-logo {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-align: center;
+    padding: 8px 0 24px;
+    background: var(--brand-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .sidebar-nav { flex: 1; }
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 16px;
+    border-radius: 10px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-bottom: 2px;
+  }
+  .sidebar-item:hover { background: var(--surface-hover); color: var(--text); }
+  .sidebar-item.active { background: rgba(255,154,52,0.1); color: var(--orange-dark); }
+  .sidebar-item .icon { font-size: 18px; width: 24px; text-align: center; }
+  .sidebar-badge {
+    margin-left: auto;
+    background: var(--orange);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+  .sidebar-section {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 20px 16px 8px;
+  }
+  .sidebar-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+  }
+  .sidebar-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--brand-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: white;
+  }
+  .sidebar-user-info { flex: 1; }
+  .sidebar-user-name { font-size: 13px; font-weight: 500; }
+  .sidebar-user-email { font-size: 11px; color: var(--text-muted); }
+
+  /* Main content area */
+  .main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 50%, rgba(255,154,52,0.03) 100%);
+  }
+
+  /* Orb */
+  .orb-container { position: relative; margin-bottom: 24px; }
+  .orb {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%, rgba(255,154,52,0.35), rgba(245,119,61,0.12), transparent);
+    border: 2px solid rgba(255,154,52,0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: breathe 4s ease-in-out infinite;
+    box-shadow: 0 0 60px rgba(255,154,52,0.1);
+  }
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 60px rgba(255,154,52,0.1); }
+    50% { transform: scale(1.05); box-shadow: 0 0 80px rgba(255,154,52,0.2); }
+  }
+  .orb-text {
+    font-size: 20px;
+    font-weight: 300;
+    letter-spacing: 6px;
+    color: var(--orange-dark);
+  }
+  .status-text {
+    font-size: 15px;
+    color: var(--text-secondary);
+    margin-bottom: 32px;
+  }
+
+  /* Transcript area */
+  .transcript-box {
+    width: 90%;
+    max-width: 600px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 12px rgba(25,25,24,0.04);
+  }
+  .transcript-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .transcript-content {
+    font-size: 15px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .transcript-content .committed { color: var(--green-deep); }
+  .transcript-content .partial { color: var(--text-muted); }
+  .cursor-blink { animation: blink 1s step-end infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* History */
+  .history-box {
+    width: 90%;
+    max-width: 600px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 20px;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+  .history-entry {
+    display: flex;
+    gap: 10px;
+    padding: 6px 0;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .history-time { color: var(--text-muted); font-size: 12px; white-space: nowrap; }
+  .history-user { color: var(--green-deep); }
+  .history-aura { color: var(--orange-dark); }
+
+  /* ======== ECRAN 3 : INTEGRATIONS ======== */
+  .integrations-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 30px 40px;
+  }
+  .integration-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(25,25,24,0.04);
+  }
+  .integration-card:hover { border-color: var(--text-muted); }
+  .integration-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 12px;
+  }
+  .integration-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+  }
+  .integration-name { font-size: 16px; font-weight: 600; }
+  .integration-desc { font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.4; }
+  .integration-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .status-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .status-connected .status-dot { background: var(--accent-green); }
+  .status-connected { color: var(--accent-green); }
+  .status-disconnected .status-dot { background: var(--text-muted); }
+  .status-disconnected { color: var(--text-muted); }
+  .btn-sm {
+    padding: 7px 16px;
+    font-size: 13px;
+    border-radius: 8px;
+    border: none;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .btn-connect { background: var(--orange); color: white; }
+  .btn-disconnect { background: rgba(251,44,54,0.08); color: var(--accent-red); }
+
+  /* ======== ECRAN 4 : TRANSCRIPTIONS ======== */
+  .transcriptions-list {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 30px 40px;
+  }
+  .transcription-item {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 24px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    box-shadow: 0 2px 8px rgba(25,25,24,0.03);
+  }
+  .transcription-item:hover { border-color: var(--orange); background: var(--surface); }
+  .transcription-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .transcription-title { font-size: 15px; font-weight: 600; }
+  .transcription-date { font-size: 12px; color: var(--text-muted); }
+  .transcription-preview { font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
+  .transcription-tags {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .tag {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-weight: 500;
+  }
+  .tag-purple { background: rgba(255,154,52,0.1); color: var(--orange-dark); }
+  .tag-green { background: rgba(0,188,125,0.1); color: var(--accent-green); }
+  .tag-blue { background: rgba(33,92,228,0.1); color: var(--blue-dark); }
+
+  /* ======== ECRAN 5 : PARAMETRES ======== */
+  .settings-container {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 0 30px 40px;
+  }
+  .settings-section {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+  .settings-section-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-label { font-size: 14px; }
+  .settings-value { font-size: 13px; color: var(--text-secondary); }
+  .toggle {
+    width: 44px;
+    height: 24px;
+    border-radius: 12px;
+    background: var(--border);
+    position: relative;
+    cursor: pointer;
+  }
+  .toggle.on { background: var(--orange); }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    top: 3px;
+    left: 3px;
+    transition: 0.2s;
+  }
+  .toggle.on::after { left: 23px; }
+
+  /* ======== ECRAN 6 : MOBILE VIEW ======== */
+  .mobile-preview {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    flex-wrap: wrap;
+    padding: 0 30px 40px;
+  }
+  .phone-frame {
+    width: 320px;
+    height: 640px;
+    background: white;
+    border: 2px solid var(--border);
+    border-radius: 36px;
+    overflow: hidden;
+    position: relative;
+  }
+  .phone-notch {
+    width: 120px;
+    height: 28px;
+    background: var(--surface);
+    border-radius: 0 0 16px 16px;
+    margin: 0 auto;
+  }
+  .phone-content {
+    padding: 16px;
+    height: calc(100% - 28px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .phone-topbar {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 4px 16px;
+  }
+  .phone-logo { font-size: 18px; font-weight: 700; letter-spacing: 3px; color: var(--orange-dark); }
+  .phone-menu { font-size: 20px; color: var(--text-secondary); cursor: pointer; }
+  .phone-orb {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%, rgba(255,154,52,0.35), rgba(245,119,61,0.12), transparent);
+    border: 2px solid rgba(255,154,52,0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 20px 0 16px;
+    animation: breathe 4s ease-in-out infinite;
+  }
+  .phone-status { font-size: 14px; color: var(--text-secondary); margin-bottom: 20px; }
+  .phone-transcript {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    flex: 1;
+    overflow-y: auto;
+  }
+  .phone-transcript .transcript-label { font-size: 10px; }
+  .phone-transcript .transcript-content { font-size: 13px; }
+  .phone-bottom-nav {
+    width: 100%;
+    display: flex;
+    justify-content: space-around;
+    padding: 12px 0 4px;
+    border-top: 1px solid var(--border);
+    margin-top: auto;
+  }
+  .phone-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .phone-nav-item.active { color: var(--orange-dark); }
+  .phone-nav-item .icon { font-size: 18px; }
+
+  /* ======== FLOW DIAGRAM ======== */
+  .flow-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 30px 40px;
+  }
+  .flow-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 8px;
+    position: relative;
+  }
+  .flow-connector {
+    width: 2px;
+    height: 24px;
+    background: var(--border);
+    margin-left: 23px;
+    margin-bottom: 8px;
+  }
+  .flow-dot {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .flow-content { flex: 1; padding-top: 4px; }
+  .flow-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .flow-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
+</style>
+</head>
+<body>
+
+<!-- NAVIGATION -->
+<nav class="nav-tabs">
+  <button class="active" onclick="showScreen('login')">Login</button>
+  <button onclick="showScreen('dashboard')">Dashboard</button>
+  <button onclick="showScreen('integrations')">Integrations</button>
+  <button onclick="showScreen('transcriptions')">Transcriptions</button>
+  <button onclick="showScreen('settings')">Parametres</button>
+  <button onclick="showScreen('mobile')">Mobile</button>
+  <button onclick="showScreen('flow')">User Flow</button>
+</nav>
+
+<!-- ====== ECRAN 1 : LOGIN ====== -->
+<div id="screen-login" class="screen active">
+  <div class="login-screen">
+    <div class="login-card">
+      <div class="login-logo">
+        <h1>AURA</h1>
+        <p>Assistant vocal intelligent</p>
+      </div>
+      <div class="login-divider"></div>
+      <div class="form-group">
+        <label>Adresse email</label>
+        <input type="email" placeholder="nom@entreprise.com" />
+      </div>
+      <div class="form-group">
+        <label>Mot de passe</label>
+        <input type="password" placeholder="Votre mot de passe" />
+      </div>
+      <button class="btn btn-primary" style="margin-top:8px">Se connecter</button>
+      <button class="btn btn-outline">Creer un compte</button>
+      <div class="login-footer">
+        <a href="#">Mot de passe oublie ?</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== ECRAN 2 : DASHBOARD ====== -->
+<div id="screen-dashboard" class="screen">
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">AURA</div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section">Principal</div>
+        <div class="sidebar-item active">
+          <span class="icon">&#9679;</span> Assistant Vocal
+        </div>
+        <div class="sidebar-item">
+          <span class="icon">&#9998;</span> Transcriptions
+          <span class="sidebar-badge">49</span>
+        </div>
+        <div class="sidebar-item">
+          <span class="icon">&#9734;</span> Contacts
+        </div>
+
+        <div class="sidebar-section">Outils</div>
+        <div class="sidebar-item">
+          <span class="icon">&#128197;</span> Calendrier
+        </div>
+        <div class="sidebar-item">
+          <span class="icon">&#9993;</span> Emails
+        </div>
+        <div class="sidebar-item">
+          <span class="icon">&#128172;</span> Slack
+        </div>
+
+        <div class="sidebar-section">Configuration</div>
+        <div class="sidebar-item">
+          <span class="icon">&#128279;</span> Integrations
+        </div>
+        <div class="sidebar-item">
+          <span class="icon">&#9881;</span> Parametres
+        </div>
+      </nav>
+
+      <div class="sidebar-user">
+        <div class="sidebar-avatar">M</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name">Marwa</div>
+          <div class="sidebar-user-email">marwa@hallia.ai</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main-content">
+      <div class="orb-container">
+        <div class="orb">
+          <span class="orb-text">AURA</span>
+        </div>
+      </div>
+      <div class="status-text">Dites "Aura test" pour commencer...</div>
+
+      <div class="transcript-box">
+        <div class="transcript-label">Transcription en direct</div>
+        <div class="transcript-content">
+          <span class="committed">Envoie un email a Jean pour le meeting de</span>
+          <span class="partial"> demain matin<span class="cursor-blink">|</span></span>
+        </div>
+      </div>
+
+      <div class="history-box">
+        <div class="transcript-label">Historique de session</div>
+        <div class="history-entry">
+          <span class="history-time">14:32</span>
+          <span class="history-user">Planifie une reunion demain a 10h avec Sophie</span>
+        </div>
+        <div class="history-entry">
+          <span class="history-time">14:32</span>
+          <span class="history-aura">Rendez-vous planifie pour demain a 10h00 avec sophie@hallia.ai.</span>
+        </div>
+        <div class="history-entry">
+          <span class="history-time">14:35</span>
+          <span class="history-user">Cherche le contact de Pierre dans HubSpot</span>
+        </div>
+        <div class="history-entry">
+          <span class="history-time">14:35</span>
+          <span class="history-aura">Pierre Dupont - pierre@acme.fr - Directeur Commercial chez ACME.</span>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ====== ECRAN 3 : INTEGRATIONS ====== -->
+<div id="screen-integrations" class="screen">
+  <div class="screen-title">Integrations</div>
+  <div class="screen-desc">Connectez vos services pour enrichir les capacites d'AURA</div>
+  <div class="integrations-grid">
+    <div class="integration-card">
+      <div class="integration-header">
+        <div class="integration-icon" style="background:rgba(234,67,53,0.15)">&#9993;</div>
+        <div class="integration-name">Gmail</div>
+      </div>
+      <div class="integration-desc">Envoyez des emails par commande vocale via votre compte Gmail.</div>
+      <div class="integration-status">
+        <span class="status-badge status-connected"><span class="status-dot"></span> Connecte</span>
+        <button class="btn-sm btn-disconnect">Deconnecter</button>
+      </div>
+    </div>
+
+    <div class="integration-card">
+      <div class="integration-header">
+        <div class="integration-icon" style="background:rgba(255,108,55,0.15)">&#9881;</div>
+        <div class="integration-name">HubSpot CRM</div>
+      </div>
+      <div class="integration-desc">Gerez vos contacts, deals et notes CRM par la voix.</div>
+      <div class="integration-status">
+        <span class="status-badge status-connected"><span class="status-dot"></span> Connecte</span>
+        <button class="btn-sm btn-disconnect">Deconnecter</button>
+      </div>
+    </div>
+
+    <div class="integration-card">
+      <div class="integration-header">
+        <div class="integration-icon" style="background:rgba(74,21,75,0.3)">&#128172;</div>
+        <div class="integration-name">Slack</div>
+      </div>
+      <div class="integration-desc">Envoyez des messages et lisez vos canaux Slack par la voix.</div>
+      <div class="integration-status">
+        <span class="status-badge status-disconnected"><span class="status-dot"></span> Non connecte</span>
+        <button class="btn-sm btn-connect">Connecter</button>
+      </div>
+    </div>
+
+    <div class="integration-card">
+      <div class="integration-header">
+        <div class="integration-icon" style="background:rgba(0,122,255,0.15)">&#128197;</div>
+        <div class="integration-name">Google Calendar</div>
+      </div>
+      <div class="integration-desc">Creez et consultez vos rendez-vous par commande vocale.</div>
+      <div class="integration-status">
+        <span class="status-badge status-connected"><span class="status-dot"></span> Connecte</span>
+        <button class="btn-sm btn-disconnect">Deconnecter</button>
+      </div>
+    </div>
+
+    <div class="integration-card">
+      <div class="integration-header">
+        <div class="integration-icon" style="background:rgba(239,68,68,0.15)">&#128241;</div>
+        <div class="integration-name">Twilio SMS</div>
+      </div>
+      <div class="integration-desc">Envoyez des SMS a vos contacts par la voix.</div>
+      <div class="integration-status">
+        <span class="status-badge status-connected"><span class="status-dot"></span> Connecte</span>
+        <button class="btn-sm btn-disconnect">Deconnecter</button>
+      </div>
+    </div>
+
+    <div class="integration-card">
+      <div class="integration-header">
+        <div class="integration-icon" style="background:rgba(0,120,212,0.15)">&#9993;</div>
+        <div class="integration-name">Outlook</div>
+      </div>
+      <div class="integration-desc">Alternative Microsoft pour emails et calendrier.</div>
+      <div class="integration-status">
+        <span class="status-badge status-disconnected"><span class="status-dot"></span> Non connecte</span>
+        <button class="btn-sm btn-connect">Connecter</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== ECRAN 4 : TRANSCRIPTIONS ====== -->
+<div id="screen-transcriptions" class="screen">
+  <div class="screen-title">Transcriptions</div>
+  <div class="screen-desc">Historique de toutes vos reunions transcrites et resumees</div>
+  <div class="transcriptions-list">
+    <div class="transcription-item">
+      <div class="transcription-header">
+        <span class="transcription-title">Reunion Marketing - Budget Q2</span>
+        <span class="transcription-date">11 mars 2026 - 14:30</span>
+      </div>
+      <div class="transcription-preview">Discussion sur le budget marketing du second trimestre. Validation du plan d'action avec l'equipe et allocation des ressources...</div>
+      <div class="transcription-tags">
+        <span class="tag tag-purple">Resume detaille</span>
+        <span class="tag tag-green">3 actions</span>
+      </div>
+    </div>
+    <div class="transcription-item">
+      <div class="transcription-header">
+        <span class="transcription-title">Point hebdo equipe tech</span>
+        <span class="transcription-date">10 mars 2026 - 10:00</span>
+      </div>
+      <div class="transcription-preview">Revue du sprint en cours, identification des blockers sur le module de paiement, et planification des tests d'integration...</div>
+      <div class="transcription-tags">
+        <span class="tag tag-purple">Resume court</span>
+        <span class="tag tag-blue">2 decisions</span>
+      </div>
+    </div>
+    <div class="transcription-item">
+      <div class="transcription-header">
+        <span class="transcription-title">Call client ACME - Negociation contrat</span>
+        <span class="transcription-date">9 mars 2026 - 16:00</span>
+      </div>
+      <div class="transcription-preview">Negociation du renouvellement annuel avec Pierre Dupont. Discussion sur les tarifs, les volumes et les nouvelles fonctionnalites souhaitees...</div>
+      <div class="transcription-tags">
+        <span class="tag tag-purple">Resume detaille</span>
+        <span class="tag tag-green">5 actions</span>
+        <span class="tag tag-blue">1 decision</span>
+      </div>
+    </div>
+    <div class="transcription-item">
+      <div class="transcription-header">
+        <span class="transcription-title">Brainstorm produit - Nouvelle feature IA</span>
+        <span class="transcription-date">8 mars 2026 - 11:00</span>
+      </div>
+      <div class="transcription-preview">Session de brainstorming sur l'integration d'un module IA dans le dashboard principal. Exploration des cas d'usage clients...</div>
+      <div class="transcription-tags">
+        <span class="tag tag-purple">Resume court</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== ECRAN 5 : PARAMETRES ====== -->
+<div id="screen-settings" class="screen">
+  <div class="screen-title">Parametres</div>
+  <div class="screen-desc">Configurez votre experience AURA</div>
+  <div class="settings-container">
+    <div class="settings-section">
+      <div class="settings-section-title">&#128100; Profil</div>
+      <div class="settings-row">
+        <span class="settings-label">Nom</span>
+        <span class="settings-value">Marwa Kahia</span>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Email</span>
+        <span class="settings-value">marwa@hallia.ai</span>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Mot de passe</span>
+        <span class="settings-value"><a href="#" style="color:var(--orange-dark);text-decoration:none;font-size:13px">Modifier</a></span>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">&#127908; Assistant vocal</div>
+      <div class="settings-row">
+        <span class="settings-label">Wake word</span>
+        <span class="settings-value">Aura</span>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Sensibilite detection</span>
+        <span class="settings-value">0.3 (defaut)</span>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Transcription passive</span>
+        <div class="toggle on"></div>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Son de confirmation</span>
+        <div class="toggle on"></div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">&#127760; Langue et region</div>
+      <div class="settings-row">
+        <span class="settings-label">Langue</span>
+        <span class="settings-value">Francais</span>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Fuseau horaire</span>
+        <span class="settings-value">Europe/Paris</span>
+      </div>
+    </div>
+
+    <div class="settings-section" style="border-color: rgba(251,44,54,0.2);">
+      <div class="settings-section-title" style="color:var(--accent-red)">&#9888; Zone dangereuse</div>
+      <div class="settings-row">
+        <span class="settings-label">Supprimer le compte</span>
+        <button class="btn-sm btn-disconnect">Supprimer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== ECRAN 6 : MOBILE ====== -->
+<div id="screen-mobile" class="screen">
+  <div class="screen-title">Version Mobile</div>
+  <div class="screen-desc">Interface responsive optimisee pour smartphone</div>
+  <div class="mobile-preview">
+    <!-- Phone 1: Login -->
+    <div>
+      <div style="text-align:center;font-size:13px;color:var(--text-muted);margin-bottom:12px">Login</div>
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-content" style="justify-content:center">
+          <div style="text-align:center;margin-bottom:32px">
+            <div style="font-size:32px;font-weight:700;letter-spacing:5px;background:linear-gradient(135deg,#ff9a34,#f5773d,#f35f4f);-webkit-background-clip:text;-webkit-text-fill-color:transparent">AURA</div>
+            <div style="font-size:13px;color:var(--text-secondary);margin-top:4px">Assistant vocal intelligent</div>
+          </div>
+          <div style="width:100%">
+            <input type="email" placeholder="Email" style="width:100%;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:inherit;font-size:14px;margin-bottom:10px;outline:none">
+            <input type="password" placeholder="Mot de passe" style="width:100%;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:inherit;font-size:14px;margin-bottom:16px;outline:none">
+            <button style="width:100%;padding:13px;background:linear-gradient(135deg,#ff9a34,#f5773d,#f35f4f);color:white;border:none;border-radius:10px;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer">Se connecter</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phone 2: Dashboard -->
+    <div>
+      <div style="text-align:center;font-size:13px;color:var(--text-muted);margin-bottom:12px">Dashboard</div>
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-content">
+          <div class="phone-topbar">
+            <span class="phone-logo">AURA</span>
+            <span class="phone-menu">&#9776;</span>
+          </div>
+          <div class="phone-orb">
+            <span style="font-size:18px;letter-spacing:4px;color:var(--orange-dark);font-weight:300">AURA</span>
+          </div>
+          <div class="phone-status">Dites "Aura"...</div>
+          <div class="phone-transcript">
+            <div class="transcript-label">Transcription</div>
+            <div class="transcript-content" style="font-size:13px">
+              <span class="committed">Envoie un email a</span>
+              <span class="partial"> Jean<span class="cursor-blink">|</span></span>
+            </div>
+            <div style="margin-top:16px">
+              <div class="transcript-label">Historique</div>
+              <div class="history-entry" style="font-size:12px">
+                <span class="history-time">14:32</span>
+                <span class="history-user">Planifie une reunion...</span>
+              </div>
+              <div class="history-entry" style="font-size:12px">
+                <span class="history-time">14:32</span>
+                <span class="history-aura">RDV planifie demain 10h</span>
+              </div>
+            </div>
+          </div>
+          <div class="phone-bottom-nav">
+            <div class="phone-nav-item active"><span class="icon">&#9679;</span> Aura</div>
+            <div class="phone-nav-item"><span class="icon">&#9998;</span> Notes</div>
+            <div class="phone-nav-item"><span class="icon">&#128279;</span> Integ.</div>
+            <div class="phone-nav-item"><span class="icon">&#9881;</span> Config</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== ECRAN 7 : USER FLOW ====== -->
+<div id="screen-flow" class="screen">
+  <div class="screen-title">Parcours utilisateur</div>
+  <div class="screen-desc">Flow d'onboarding et d'utilisation quotidienne</div>
+  <div class="flow-container">
+    <div class="flow-step">
+      <div class="flow-dot" style="background:rgba(255,154,52,0.15);color:var(--orange-dark)">1</div>
+      <div class="flow-content">
+        <div class="flow-title">Inscription / Connexion</div>
+        <div class="flow-desc">L'utilisateur cree un compte avec email + mot de passe via Supabase Auth. Validation par email optionnelle.</div>
+      </div>
+    </div>
+    <div class="flow-connector"></div>
+
+    <div class="flow-step">
+      <div class="flow-dot" style="background:rgba(120,200,186,0.2);color:var(--green-deep)">2</div>
+      <div class="flow-content">
+        <div class="flow-title">Autorisation microphone</div>
+        <div class="flow-desc">Au premier lancement, le navigateur demande l'acces au microphone. Indispensable pour le wake word et la transcription.</div>
+      </div>
+    </div>
+    <div class="flow-connector"></div>
+
+    <div class="flow-step">
+      <div class="flow-dot" style="background:rgba(93,152,255,0.15);color:var(--blue-dark)">3</div>
+      <div class="flow-content">
+        <div class="flow-title">Configuration des integrations</div>
+        <div class="flow-desc">Connexion optionnelle : Gmail/Outlook (emails + calendrier), HubSpot (CRM), Slack (messagerie), Twilio (SMS).</div>
+      </div>
+    </div>
+    <div class="flow-connector"></div>
+
+    <div class="flow-step">
+      <div class="flow-dot" style="background:rgba(159,120,255,0.15);color:var(--purple-dark)">4</div>
+      <div class="flow-content">
+        <div class="flow-title">Utilisation quotidienne</div>
+        <div class="flow-desc">L'utilisateur dit "Aura" pour activer l'assistant, donne sa commande vocale, et AURA execute (email, calendrier, CRM, resume...).</div>
+      </div>
+    </div>
+    <div class="flow-connector"></div>
+
+    <div class="flow-step">
+      <div class="flow-dot" style="background:rgba(245,119,61,0.15);color:var(--orange-dark)">5</div>
+      <div class="flow-content">
+        <div class="flow-title">Transcription passive</div>
+        <div class="flow-desc">En arriere-plan, AURA transcrit en continu l'environnement sonore. L'utilisateur peut demander un resume a tout moment.</div>
+      </div>
+    </div>
+    <div class="flow-connector"></div>
+
+    <div class="flow-step">
+      <div class="flow-dot" style="background:rgba(0,80,66,0.1);color:var(--green-deep)">6</div>
+      <div class="flow-content">
+        <div class="flow-title">Consultation des donnees</div>
+        <div class="flow-desc">Via la sidebar : consulter les transcriptions sauvegardees, gerer les contacts, voir le calendrier, verifier les integrations.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tabs button').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// Toggle switches
+document.querySelectorAll('.toggle').forEach(t => {
+  t.addEventListener('click', () => t.classList.toggle('on'));
+});
+</script>
+</body>
+</html>

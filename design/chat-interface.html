@@ -1,0 +1,2365 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AURA - Interface</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #f5f0ea;
+    --bg-warm: #faf6f1;
+    --sidebar-bg: #ebe5dc;
+    --surface: #ffffff;
+    --surface-hover: #f0ebe4;
+    --border: #ddd6cc;
+    --border-light: #e8e2d9;
+    --text: #1a1a1a;
+    --text-secondary: #6b6560;
+    --text-muted: #a39e97;
+    --orange: #e36b2b;
+    --orange-light: #f08c42;
+    --orange-warm: #d4582a;
+    --brand-gradient: linear-gradient(135deg, #e36b2b, #f08c42, #f5a623);
+    --user-bubble: #e36b2b;
+    --green: #2d9e6a;
+    --cyan: #1a8a9e;
+    --purple: #7c5cbf;
+    --amber: #c4870a;
+    --red: #d44040;
+    --sidebar-width: 260px;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ═══════════════════════════════════════════════════════ */
+  /*  LAYOUT                                                */
+  /* ═══════════════════════════════════════════════════════ */
+
+  .app {
+    display: flex;
+    height: 100vh;
+  }
+
+  /* ═══════════════════════════════════════════════════════ */
+  /*  SIDEBAR                                               */
+  /* ═══════════════════════════════════════════════════════ */
+
+  .sidebar {
+    width: var(--sidebar-width);
+    background: var(--sidebar-bg);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border);
+  }
+
+  .sidebar-header {
+    padding: 20px 16px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .sidebar-logo .orb-mini {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--brand-gradient);
+    box-shadow: 0 2px 12px rgba(227,107,43,0.25);
+  }
+
+  .sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .sidebar-logo span {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--orange);
+  }
+
+  /* ─── NAV ITEMS ──────────────────────────────────────── */
+
+  .sidebar-nav {
+    padding: 4px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+
+  .nav-item:hover {
+    background: rgba(0,0,0,0.05);
+    color: var(--text);
+  }
+
+  .nav-item.active {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+
+  .nav-item svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    opacity: 0.6;
+  }
+
+  .nav-item.active svg { opacity: 1; }
+
+  .nav-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 8px 12px;
+  }
+
+  /* ─── RECENT SESSIONS (in sidebar) ──────────────────── */
+
+  .sidebar-section-title {
+    padding: 12px 14px 6px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .sidebar-sessions {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 10px;
+  }
+
+  .session-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+    margin-bottom: 1px;
+  }
+
+  .session-item:hover { background: rgba(0,0,0,0.04); }
+  .session-item.active { background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+
+  .session-item .si-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  .session-item.active .si-dot { background: var(--orange); }
+
+  .session-item .si-title {
+    font-size: 12px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+  }
+
+  .session-item.active .si-title { color: var(--text); font-weight: 500; }
+
+  .session-item .si-time {
+    font-size: 10px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  /* ─── SIDEBAR FOOTER ─────────────────────────────────── */
+
+  .sidebar-footer {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .sidebar-footer:hover { background: rgba(0,0,0,0.03); }
+
+  .user-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--brand-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .user-info { flex: 1; min-width: 0; }
+  .user-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .user-email { font-size: 10px; color: var(--text-muted); }
+
+  /* ═══════════════════════════════════════════════════════ */
+  /*  MAIN                                                  */
+  /* ═══════════════════════════════════════════════════════ */
+
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: var(--bg-warm);
+  }
+
+  /* ═══════════════════════════════════════════════════════ */
+  /*  PAGES                                                 */
+  /* ═══════════════════════════════════════════════════════ */
+
+  .page { display: none; flex-direction: column; height: 100%; }
+  .page.active { display: flex; }
+
+  /* ─── PAGE HEADER ────────────────────────────────────── */
+
+  .page-header {
+    padding: 24px 40px 16px;
+    flex-shrink: 0;
+  }
+
+  .page-header h2 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .page-header p {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* ═══════════════════════════════════════════════════════ */
+  /*  PAGE: CHAT — ORB + MESSAGES                           */
+  /* ═══════════════════════════════════════════════════════ */
+
+  .orb-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px 24px;
+    flex-shrink: 0;
+  }
+
+  .center-orb {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    position: relative;
+    cursor: pointer;
+  }
+
+  .center-orb-core {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: var(--brand-gradient);
+    position: relative;
+    z-index: 3;
+    transition: all 0.5s ease;
+  }
+
+  .center-orb-core::after {
+    content: '';
+    position: absolute;
+    top: 15%;
+    left: 20%;
+    width: 35%;
+    height: 25%;
+    background: radial-gradient(ellipse, rgba(255,255,255,0.4), transparent);
+    border-radius: 50%;
+    filter: blur(3px);
+  }
+
+  .center-orb-glow {
+    position: absolute;
+    inset: -16px;
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    z-index: 1;
+  }
+
+  .center-orb-ring {
+    position: absolute;
+    inset: -24px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    opacity: 0;
+    z-index: 0;
+  }
+
+  .center-orb-halo {
+    position: absolute;
+    inset: -50px;
+    border-radius: 50%;
+    z-index: 0;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+
+  .orb-status {
+    margin-top: 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: color 0.4s ease;
+  }
+
+  .orb-transcript {
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--text-muted);
+    font-style: italic;
+    max-width: 380px;
+    text-align: center;
+    min-height: 20px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .orb-transcript.visible { opacity: 1; }
+
+  /* Orb states */
+  .orb-section[data-state="idle"] .center-orb { animation: orbIdle 5s ease-in-out infinite; }
+  .orb-section[data-state="idle"] .center-orb-core { box-shadow: 0 4px 30px rgba(227,107,43,0.25); }
+  .orb-section[data-state="idle"] .center-orb-halo { background: radial-gradient(circle, rgba(227,107,43,0.08), transparent 70%); opacity: 1; }
+  @keyframes orbIdle { 0%,100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+
+  .orb-section[data-state="listening"] .center-orb-core { background: radial-gradient(circle at 30% 30%, #4ade80, #22c55e, #16a34a); box-shadow: 0 4px 40px rgba(34,197,94,0.35); }
+  .orb-section[data-state="listening"] .center-orb { animation: orbListen 1.4s ease-in-out infinite; }
+  .orb-section[data-state="listening"] .center-orb-glow { background: radial-gradient(circle, rgba(34,197,94,0.15), transparent 70%); opacity: 1; animation: glowPulse 1.4s ease-in-out infinite; }
+  .orb-section[data-state="listening"] .center-orb-ring { border-color: rgba(34,197,94,0.2); opacity: 1; animation: ringExpand 2s ease-out infinite; }
+  .orb-section[data-state="listening"] .center-orb-halo { background: radial-gradient(circle, rgba(34,197,94,0.06), transparent 70%); opacity: 1; }
+  .orb-section[data-state="listening"] .orb-status { color: var(--green); }
+  .orb-section[data-state="listening"] .orb-transcript { opacity: 1; }
+  @keyframes orbListen { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+
+  .orb-section[data-state="thinking"] .center-orb-core { background: radial-gradient(circle at 30% 30%, #fbbf24, #f59e0b, #d97706); box-shadow: 0 4px 40px rgba(245,158,11,0.35); }
+  .orb-section[data-state="thinking"] .center-orb { animation: orbThink 2.5s linear infinite; }
+  .orb-section[data-state="thinking"] .center-orb-ring { border-color: rgba(245,158,11,0.15); border-top-color: rgba(245,158,11,0.6); opacity: 1; animation: ringSpin 1.2s linear infinite; }
+  .orb-section[data-state="thinking"] .center-orb-halo { background: radial-gradient(circle, rgba(245,158,11,0.06), transparent 70%); opacity: 1; }
+  .orb-section[data-state="thinking"] .orb-status { color: var(--amber); }
+  @keyframes orbThink { 0%,100% { transform: scale(1) rotate(0); } 25% { transform: scale(1.02) rotate(2deg); } 75% { transform: scale(0.98) rotate(-2deg); } }
+  @keyframes ringSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+
+  .orb-section[data-state="speaking"] .center-orb-core { background: radial-gradient(circle at 30% 30%, #c4b5fd, #a78bfa, #7c3aed); box-shadow: 0 4px 40px rgba(167,139,250,0.35); }
+  .orb-section[data-state="speaking"] .center-orb { animation: orbSpeak 1s ease-in-out infinite; }
+  .orb-section[data-state="speaking"] .center-orb-glow { background: radial-gradient(circle, rgba(167,139,250,0.15), transparent 70%); opacity: 1; animation: glowPulse 1s ease-in-out infinite; }
+  .orb-section[data-state="speaking"] .center-orb-halo { background: radial-gradient(circle, rgba(167,139,250,0.05), transparent 70%); opacity: 1; }
+  .orb-section[data-state="speaking"] .orb-status { color: var(--purple); }
+  @keyframes orbSpeak { 0%,100% { transform: scale(1); } 25% { transform: scale(1.06); } 50% { transform: scale(0.97); } 75% { transform: scale(1.03); } }
+
+  .orb-section[data-state="conversing"] .center-orb-core { background: radial-gradient(circle at 30% 30%, #67e8f9, #22d3ee, #0891b2); box-shadow: 0 4px 40px rgba(34,211,238,0.3); }
+  .orb-section[data-state="conversing"] .center-orb { animation: orbConverse 3s ease-in-out infinite; }
+  .orb-section[data-state="conversing"] .center-orb-halo { background: radial-gradient(circle, rgba(34,211,238,0.05), transparent 70%); opacity: 1; }
+  .orb-section[data-state="conversing"] .orb-status { color: var(--cyan); }
+  @keyframes orbConverse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+
+  .orb-section[data-state="error"] .center-orb-core { background: radial-gradient(circle at 30% 30%, #fca5a5, #ef4444, #dc2626); box-shadow: 0 4px 30px rgba(239,68,68,0.3); }
+  .orb-section[data-state="error"] .center-orb { animation: orbError 0.4s ease-in-out 3; }
+  .orb-section[data-state="error"] .orb-status { color: var(--red); }
+  @keyframes orbError { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+
+  @keyframes glowPulse { 0%,100% { transform: scale(1); opacity: 0.4; } 50% { transform: scale(1.1); opacity: 1; } }
+  @keyframes ringExpand { 0% { transform: scale(1); opacity: 0.5; } 100% { transform: scale(1.7); opacity: 0; } }
+
+  /* State dots (demo) */
+  .state-dots { display: flex; gap: 6px; margin-top: 14px; }
+  .state-dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    border: 2px solid var(--border);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .state-dot:hover { transform: scale(1.3); }
+  .state-dot.active { border-color: var(--text-muted); }
+  .state-dot.d-idle     { background: var(--orange); }
+  .state-dot.d-listen   { background: var(--green); }
+  .state-dot.d-think    { background: var(--amber); }
+  .state-dot.d-speak    { background: var(--purple); }
+  .state-dot.d-converse { background: var(--cyan); }
+  .state-dot.d-error    { background: var(--red); }
+
+  /* ─── MESSAGES ──────────────────────────────────────── */
+
+  .messages-container {
+    flex: 1;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+  }
+
+  .messages-inner {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 8px 32px 24px;
+  }
+
+  .message-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    animation: msgIn 0.3s ease-out;
+  }
+
+  @keyframes msgIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .message-row.user { flex-direction: row-reverse; }
+
+  .msg-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; margin-top: 2px;
+  }
+
+  .msg-avatar.aura { background: var(--brand-gradient); color: white; }
+  .msg-avatar.user { background: var(--text); color: white; }
+
+  .msg-content { flex: 1; min-width: 0; max-width: 90%; }
+  .msg-name { font-size: 11px; font-weight: 600; margin-bottom: 4px; color: var(--text-secondary); }
+  .message-row.user .msg-name { text-align: right; }
+
+  .msg-bubble { font-size: 14px; line-height: 1.7; color: var(--text); }
+
+  .message-row.user .msg-bubble {
+    background: var(--user-bubble);
+    color: white;
+    padding: 10px 14px;
+    border-radius: 16px 16px 4px 16px;
+    display: inline-block;
+    float: right;
+  }
+
+  .message-row.aura .msg-bubble { color: var(--text); }
+
+  .msg-bubble p { margin-bottom: 8px; }
+  .msg-bubble p:last-child { margin-bottom: 0; }
+  .msg-bubble strong { color: var(--orange-warm); font-weight: 600; }
+  .msg-bubble ul, .msg-bubble ol { margin: 6px 0; padding-left: 20px; }
+  .msg-bubble li { margin-bottom: 3px; color: var(--text-secondary); }
+
+  .msg-actions { display: flex; gap: 4px; margin-top: 6px; opacity: 0; transition: opacity 0.2s; }
+  .message-row:hover .msg-actions { opacity: 1; }
+
+  .msg-action-btn {
+    background: none; border: none; padding: 3px 8px; border-radius: 5px;
+    color: var(--text-muted); cursor: pointer; font-size: 11px;
+    display: flex; align-items: center; gap: 4px; transition: all 0.15s;
+    font-family: inherit;
+  }
+  .msg-action-btn:hover { background: var(--surface-hover); color: var(--text-secondary); }
+
+  /* ═══════════════════════════════════════════════════════ */
+  /*  PAGE: RÉSUMÉS                                         */
+  /* ═══════════════════════════════════════════════════════ */
+
+  .page-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 40px 32px;
+  }
+
+  .summary-section-title {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 20px 0 10px;
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 12px;
+  }
+
+  .summary-card {
+    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .summary-card:hover {
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    border-color: var(--border);
+  }
+
+  .sc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .sc-type {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; padding: 2px 8px; border-radius: 4px;
+  }
+  .sc-type.rolling { background: rgba(26,138,158,0.1); color: var(--cyan); }
+  .sc-type.final   { background: rgba(124,92,191,0.1); color: var(--purple); }
+
+  .sc-date { font-size: 11px; color: var(--text-muted); }
+
+  .sc-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .sc-text {
+    font-size: 13px; line-height: 1.6; color: var(--text-secondary);
+    display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3;
+    -webkit-box-orient: vertical; overflow: hidden;
+  }
+
+  .sc-stats {
+    display: flex; gap: 14px; margin-top: 10px;
+    font-size: 11px; color: var(--text-muted);
+  }
+
+  .sc-stats span { display: flex; align-items: center; gap: 4px; }
+
+  /* ═══════════════════════════════════════════════════════ */
+  /*  PAGE: ACTIVITÉ                                        */
+  /* ═══════════════════════════════════════════════════════ */
+
+  .timeline-section-title {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 20px 0 12px;
+  }
+
+  .timeline {
+    position: relative;
+    padding-left: 28px;
+    max-width: 800px;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    background: var(--border);
+    border-radius: 1px;
+  }
+
+  .tl-item {
+    position: relative;
+    padding: 0 0 20px 0;
+  }
+
+  .tl-item:last-child { padding-bottom: 4px; }
+
+  .tl-item::before {
+    content: '';
+    position: absolute;
+    left: -24px;
+    top: 5px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 2.5px solid var(--text-muted);
+    z-index: 1;
+  }
+
+  .tl-item.tl-email::before    { border-color: var(--green); background: rgba(45,158,106,0.15); }
+  .tl-item.tl-calendar::before { border-color: var(--amber); background: rgba(196,135,10,0.15); }
+  .tl-item.tl-summary::before  { border-color: var(--purple); background: rgba(124,92,191,0.15); }
+  .tl-item.tl-search::before   { border-color: var(--cyan); background: rgba(26,138,158,0.15); }
+  .tl-item.tl-hubspot::before  { border-color: #e06040; background: rgba(224,96,64,0.15); }
+  .tl-item.tl-note::before     { border-color: var(--orange); background: rgba(227,107,43,0.15); }
+
+  .tl-time { font-size: 11px; color: var(--text-muted); margin-bottom: 2px; }
+
+  .tl-action { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+  .tl-action strong { color: var(--text); font-weight: 600; }
+
+  .tl-tag {
+    display: inline-block; font-size: 9px; font-weight: 600;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 4px;
+    margin-left: 6px; vertical-align: middle;
+  }
+
+  .tl-tag.tag-gmail    { background: rgba(45,158,106,0.1); color: var(--green); }
+  .tl-tag.tag-calendar { background: rgba(196,135,10,0.1); color: var(--amber); }
+  .tl-tag.tag-hubspot  { background: rgba(224,96,64,0.1); color: #e06040; }
+  .tl-tag.tag-search   { background: rgba(26,138,158,0.1); color: var(--cyan); }
+  .tl-tag.tag-aura     { background: rgba(227,107,43,0.1); color: var(--orange); }
+
+  /* ═══════════════════════════════════════════════════════ */
+  /*  PAGE: PARAMÈTRES                                      */
+  /* ═══════════════════════════════════════════════════════ */
+
+  .settings-layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .settings-nav {
+    width: 200px;
+    flex-shrink: 0;
+    padding: 24px 0 24px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .settings-nav-item {
+    display: block;
+    padding: 8px 14px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--text-secondary);
+    background: none;
+    border: none;
+    border-left: 2px solid transparent;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.15s;
+    border-radius: 0 6px 6px 0;
+  }
+
+  .settings-nav-item:hover {
+    color: var(--text);
+    background: rgba(0,0,0,0.03);
+  }
+
+  .settings-nav-item.active {
+    color: var(--text);
+    font-weight: 500;
+    border-left-color: var(--orange);
+    background: rgba(227,107,43,0.04);
+  }
+
+  .settings-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 40px 40px 32px;
+  }
+
+  .settings-section {
+    display: none;
+    max-width: 680px;
+  }
+
+  .settings-section.active { display: block; }
+
+  .settings-section h3 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .settings-section .section-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+  }
+
+  /* Setting row */
+  .setting-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border-light);
+    gap: 24px;
+  }
+
+  .setting-row:last-child { border-bottom: none; }
+
+  .setting-info { flex: 1; min-width: 0; }
+
+  .setting-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+
+  .setting-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  .setting-control {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Toggle switch */
+  .toggle {
+    width: 40px;
+    height: 22px;
+    border-radius: 11px;
+    background: var(--border);
+    cursor: pointer;
+    position: relative;
+    transition: background 0.2s;
+    border: none;
+    padding: 0;
+  }
+
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    transition: transform 0.2s;
+  }
+
+  .toggle.on {
+    background: var(--orange);
+  }
+
+  .toggle.on::after {
+    transform: translateX(18px);
+  }
+
+  /* Select */
+  .setting-select {
+    padding: 6px 28px 6px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23a39e97' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+  }
+
+  .setting-select:focus { outline: none; border-color: var(--orange); }
+
+  /* Input field */
+  .setting-input {
+    padding: 6px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    width: 200px;
+  }
+
+  .setting-input:focus { outline: none; border-color: var(--orange); }
+
+  /* Button */
+  .setting-btn {
+    padding: 6px 14px;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  .setting-btn:hover { background: var(--surface-hover); }
+
+  .setting-btn.primary {
+    background: var(--orange);
+    color: white;
+    border-color: var(--orange);
+  }
+
+  .setting-btn.primary:hover { background: var(--orange-warm); }
+
+  .setting-btn.danger {
+    color: var(--red);
+    border-color: rgba(212,64,64,0.3);
+  }
+
+  .setting-btn.danger:hover {
+    background: rgba(212,64,64,0.06);
+  }
+
+  /* Connector row */
+  .connector-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  .connector-row:last-child { border-bottom: none; }
+
+  .connector-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+    background: var(--surface-hover);
+  }
+
+  .connector-info { flex: 1; min-width: 0; }
+
+  .connector-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .connector-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .connector-status {
+    font-size: 13px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  .connector-status.connected { color: var(--green); }
+
+  /* ═══════════════════════════════════════════════════════ */
+  /*  PAGE: CONTACTS                                        */
+  /* ═══════════════════════════════════════════════════════ */
+
+  .contacts-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .contacts-search {
+    padding: 8px 14px 8px 36px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: 280px;
+    background-image: url("data:image/svg+xml,%3Csvg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a39e97' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: 12px center;
+  }
+
+  .contacts-search:focus { outline: none; border-color: var(--orange); }
+
+  .btn-add-contact {
+    padding: 8px 16px;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 500;
+    color: white;
+    background: var(--orange);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s;
+  }
+
+  .btn-add-contact:hover { background: var(--orange-warm); }
+
+  .contacts-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .contacts-table thead th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .contacts-table tbody td {
+    padding: 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-light);
+    vertical-align: middle;
+  }
+
+  .contacts-table tbody tr {
+    transition: background 0.15s;
+  }
+
+  .contacts-table tbody tr:hover {
+    background: rgba(0,0,0,0.02);
+  }
+
+  .contact-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .contact-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .contact-avatar.ca-1 { background: #e36b2b; }
+  .contact-avatar.ca-2 { background: #2d9e6a; }
+  .contact-avatar.ca-3 { background: #7c5cbf; }
+  .contact-avatar.ca-4 { background: #1a8a9e; }
+  .contact-avatar.ca-5 { background: #c4870a; }
+
+  .contact-name-text {
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .contact-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .contacts-table tbody tr:hover .contact-actions { opacity: 1; }
+
+  .contact-action-btn {
+    background: none;
+    border: 1px solid var(--border);
+    padding: 4px 8px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-family: inherit;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .contact-action-btn:hover {
+    background: var(--surface-hover);
+    color: var(--text-secondary);
+  }
+
+  /* Add contact modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+  }
+
+  .modal-overlay.visible { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border-radius: 16px;
+    width: 480px;
+    max-width: 90vw;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    overflow: hidden;
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  .modal-header h3 {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .modal-close:hover { color: var(--text); }
+
+  .modal-body {
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .form-group label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  .form-input {
+    padding: 8px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text);
+    background: var(--bg-warm);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .form-input:focus { outline: none; border-color: var(--orange); }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border-light);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .modal-btn {
+    padding: 8px 18px;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 500;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .modal-btn.cancel {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+
+  .modal-btn.cancel:hover { background: var(--surface-hover); }
+
+  .modal-btn.save {
+    background: var(--orange);
+    border: 1px solid var(--orange);
+    color: white;
+  }
+
+  .modal-btn.save:hover { background: var(--orange-warm); }
+
+  /* ═══════════════════════════════════════════════════════ */
+  /*  PAGE: DISCUSSIONS                                     */
+  /* ═══════════════════════════════════════════════════════ */
+
+  .discussions-search-bar {
+    position: relative;
+    margin-bottom: 24px;
+  }
+
+  .discussions-search {
+    width: 100%;
+    padding: 12px 16px 12px 42px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    transition: border-color 0.2s;
+  }
+
+  .discussions-search:focus {
+    outline: none;
+    border-color: var(--orange);
+  }
+
+  .discussions-search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+  }
+
+  .discussions-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .discussion-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+    border: 1px solid transparent;
+  }
+
+  .discussion-item:hover {
+    background: var(--surface);
+    border-color: var(--border-light);
+  }
+
+  .discussion-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: var(--surface-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .discussion-icon svg {
+    width: 18px;
+    height: 18px;
+    color: var(--text-muted);
+  }
+
+  .discussion-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .discussion-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .discussion-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .discussion-time {
+    font-size: 12px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  .discussions-section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 16px 16px 8px;
+  }
+
+  /* ═══════════════════════════════════════════════════════ */
+  /*  SCROLLBAR                                             */
+  /* ═══════════════════════════════════════════════════════ */
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
+  * { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.12) transparent; }
+
+  /* ═══════════════════════════════════════════════════════ */
+  /*  RESPONSIVE                                            */
+  /* ═══════════════════════════════════════════════════════ */
+
+  @media (max-width: 768px) {
+    .sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 50; transform: translateX(-100%); }
+    .sidebar.open { transform: translateX(0); }
+    .center-orb { width: 110px; height: 110px; }
+    .orb-section { padding: 24px 20px 16px; }
+    .summary-grid { grid-template-columns: 1fr; }
+  }
+
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ═══ SIDEBAR ═══ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="orb-mini"></div>
+        <span>AURA</span>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="sidebar-nav">
+      <button class="nav-item" onclick="showPage('summaries', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Résumés
+      </button>
+      <button class="nav-item" onclick="showPage('activity', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Activité
+      </button>
+      <button class="nav-item" onclick="showPage('contacts', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Contacts
+      </button>
+      <button class="nav-item" onclick="showPage('discussions', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Discussions
+      </button>
+    </nav>
+
+    <div class="nav-divider"></div>
+
+    <!-- Sessions = discussions, listed directly -->
+    <div class="sidebar-section-title">Discussions</div>
+    <div class="sidebar-sessions">
+      <div class="session-item active" onclick="showPage('chat', null)">
+        <div class="si-dot"></div>
+        <span class="si-title">Réunion marketing Q2</span>
+        <span class="si-time">9:28</span>
+      </div>
+      <div class="session-item" onclick="showPage('chat', null)">
+        <div class="si-dot"></div>
+        <span class="si-title">Emails clients prioritaires</span>
+        <span class="si-time">10:15</span>
+      </div>
+      <div class="session-item" onclick="showPage('chat', null)">
+        <div class="si-dot"></div>
+        <span class="si-title">Planning sprint prochain</span>
+        <span class="si-time">Hier</span>
+      </div>
+      <div class="session-item" onclick="showPage('chat', null)">
+        <div class="si-dot"></div>
+        <span class="si-title">Analyse KPIs Q1</span>
+        <span class="si-time">Hier</span>
+      </div>
+      <div class="session-item" onclick="showPage('chat', null)">
+        <div class="si-dot"></div>
+        <span class="si-title">Pitch investisseurs Série A</span>
+        <span class="si-time">11 mars</span>
+      </div>
+      <div class="session-item" onclick="showPage('chat', null)">
+        <div class="si-dot"></div>
+        <span class="si-title">Config intégration HubSpot</span>
+        <span class="si-time">11 mars</span>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-avatar">B</div>
+      <div class="user-info">
+        <div class="user-name">Badreddine</div>
+        <div class="user-email">badreddine@aura.ai</div>
+      </div>
+      <svg onclick="showPage('settings', null)" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="flex-shrink:0; cursor:pointer; color:var(--text-muted);">
+        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+        <circle cx="12" cy="12" r="3"/>
+      </svg>
+    </div>
+  </aside>
+
+  <!-- ═══ MAIN ═══ -->
+  <main class="main">
+
+    <!-- ═══ PAGE: CHAT ═══ -->
+    <div class="page active" id="page-chat">
+      <div class="orb-section" data-state="idle" id="orbSection" onclick="cycleState()">
+        <div class="center-orb">
+          <div class="center-orb-halo"></div>
+          <div class="center-orb-ring"></div>
+          <div class="center-orb-glow"></div>
+          <div class="center-orb-core"></div>
+        </div>
+        <div class="orb-status" id="orbStatus">En veille</div>
+        <div class="orb-transcript" id="orbTranscript">Résume-moi la réunion de ce matin...</div>
+        <div class="state-dots" onclick="event.stopPropagation()">
+          <div class="state-dot d-idle active" onclick="setState('idle')"></div>
+          <div class="state-dot d-listen" onclick="setState('listening')"></div>
+          <div class="state-dot d-think" onclick="setState('thinking')"></div>
+          <div class="state-dot d-speak" onclick="setState('speaking')"></div>
+          <div class="state-dot d-converse" onclick="setState('conversing')"></div>
+          <div class="state-dot d-error" onclick="setState('error')"></div>
+        </div>
+      </div>
+
+      <div class="messages-container" id="messagesContainer">
+        <div class="messages-inner">
+
+          <div class="message-row user">
+            <div class="msg-avatar user">B</div>
+            <div class="msg-content">
+              <div class="msg-name">Vous</div>
+              <div class="msg-bubble">Tu peux me faire le résumé de la réunion que je viens de terminer ?</div>
+            </div>
+          </div>
+
+          <div class="message-row aura">
+            <div class="msg-avatar aura">A</div>
+            <div class="msg-content">
+              <div class="msg-name">Aura</div>
+              <div class="msg-bubble">
+                <p>Voici le résumé de votre réunion marketing <strong>(9h00 - 9h45)</strong> :</p>
+                <p><strong>Participants :</strong> Vous, Sarah (Design), Thomas (Dev), Marie (Product)</p>
+                <ul>
+                  <li><strong>Campagne Q2</strong> — Lancement fixé au 15 avril</li>
+                  <li><strong>Landing page</strong> — Refonte estimée à 2 sprints</li>
+                  <li><strong>Budget ads</strong> — +20% validé, focus LinkedIn + Google</li>
+                </ul>
+                <p><strong>Actions :</strong> Sarah maquettes vendredi, Thomas estimation lundi, vous brief agence créa aujourd'hui.</p>
+              </div>
+              <div class="msg-actions">
+                <button class="msg-action-btn">Copier</button>
+                <button class="msg-action-btn">Partager</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="message-row user">
+            <div class="msg-avatar user">B</div>
+            <div class="msg-content">
+              <div class="msg-name">Vous</div>
+              <div class="msg-bubble">Envoie le résumé par email à toute l'équipe</div>
+            </div>
+          </div>
+
+          <div class="message-row aura">
+            <div class="msg-avatar aura">A</div>
+            <div class="msg-content">
+              <div class="msg-name">Aura</div>
+              <div class="msg-bubble">
+                <p>Résumé envoyé à sarah@, thomas@ et marie@company.com.</p>
+                <p style="margin-top:8px; padding:8px 12px; background:rgba(45,158,106,0.08); border:1px solid rgba(45,158,106,0.15); border-radius:8px; font-size:13px; color:var(--green);">
+                  ✓ Email envoyé via Gmail
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="message-row user">
+            <div class="msg-avatar user">B</div>
+            <div class="msg-content">
+              <div class="msg-name">Vous</div>
+              <div class="msg-bubble">Quels sont mes prochains rendez-vous ?</div>
+            </div>
+          </div>
+
+          <div class="message-row aura">
+            <div class="msg-avatar aura">A</div>
+            <div class="msg-content">
+              <div class="msg-name">Aura</div>
+              <div class="msg-bubble">
+                <p>Vos rendez-vous aujourd'hui :</p>
+                <div style="margin:8px 0; display:flex; flex-direction:column; gap:6px;">
+                  <div style="display:flex; align-items:center; gap:10px; padding:8px 12px; background:var(--surface); border:1px solid var(--border-light); border-radius:8px;">
+                    <div style="width:3px; height:28px; border-radius:2px; background:var(--orange);"></div>
+                    <div>
+                      <div style="font-size:13px; font-weight:500;">11h00 — Point produit avec Marie</div>
+                      <div style="font-size:11px; color:var(--text-muted);">Google Meet · 30 min</div>
+                    </div>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:10px; padding:8px 12px; background:var(--surface); border:1px solid var(--border-light); border-radius:8px;">
+                    <div style="width:3px; height:28px; border-radius:2px; background:var(--purple);"></div>
+                    <div>
+                      <div style="font-size:13px; font-weight:500;">14h30 — Call investisseur Série A</div>
+                      <div style="font-size:11px; color:var(--text-muted);">Zoom · 1h</div>
+                    </div>
+                  </div>
+                </div>
+                <p style="font-size:13px; color:var(--text-muted);">Vous avez <strong style="color:var(--orange);">1h15</strong> de libre avant le point produit.</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ PAGE: RÉSUMÉS ═══ -->
+    <div class="page" id="page-summaries">
+      <div class="page-header">
+        <h2>Résumés</h2>
+        <p>Les résumés générés automatiquement par Aura à partir de vos conversations.</p>
+      </div>
+      <div class="page-content">
+
+        <div class="summary-section-title">Aujourd'hui · 13 mars</div>
+        <div class="summary-grid">
+          <div class="summary-card">
+            <div class="sc-header">
+              <span class="sc-type final">Session</span>
+              <span class="sc-date">9h45</span>
+            </div>
+            <div class="sc-title">Réunion marketing Q2</div>
+            <div class="sc-text">Lancement campagne fixé au 15 avril, refonte landing page estimée à 2 sprints, budget ads +20% validé. Actions : Sarah maquettes vendredi, Thomas estimation lundi, brief agence créa aujourd'hui.</div>
+            <div class="sc-stats">
+              <span>42 segments</span>
+              <span>45 min</span>
+              <span>4 participants</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="summary-section-title">Hier · 12 mars</div>
+        <div class="summary-grid">
+          <div class="summary-card">
+            <div class="sc-header">
+              <span class="sc-type rolling">Rolling</span>
+              <span class="sc-date">14h30</span>
+            </div>
+            <div class="sc-title">Sprint planning — 1ère partie</div>
+            <div class="sc-text">Priorisation des tickets backend auth et migration DB. Thomas propose de splitter le ticket en 3 sous-tâches. Marie valide la roadmap produit pour les 2 prochaines semaines.</div>
+            <div class="sc-stats">
+              <span>30 segments</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="sc-header">
+              <span class="sc-type final">Session</span>
+              <span class="sc-date">15h35</span>
+            </div>
+            <div class="sc-title">Sprint planning — Final</div>
+            <div class="sc-text">12 tickets estimés, vélocité cible 34 points. Focus : refonte auth middleware (compliance), API v2 endpoints, et tests d'intégration. Retrospective planifiée jeudi 17h.</div>
+            <div class="sc-stats">
+              <span>68 segments</span>
+              <span>1h30</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="sc-header">
+              <span class="sc-type final">Session</span>
+              <span class="sc-date">17h10</span>
+            </div>
+            <div class="sc-title">Analyse KPIs Q1</div>
+            <div class="sc-text">Taux de conversion +12% vs Q4, coût d'acquisition en baisse de 8%. Rétention M2 encore à 45%, objectif 55%. Plan : onboarding email revu, push notifications.</div>
+            <div class="sc-stats">
+              <span>35 segments</span>
+              <span>28 min</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="summary-section-title">11 mars</div>
+        <div class="summary-grid">
+          <div class="summary-card">
+            <div class="sc-header">
+              <span class="sc-type rolling">Rolling</span>
+              <span class="sc-date">10h30</span>
+            </div>
+            <div class="sc-title">Préparation pitch investisseurs</div>
+            <div class="sc-text">Chiffres clés révisés, ARR 1.2M, croissance MoM 15%. Sarah finalise le deck, slides financières à revoir avec le CFO demain.</div>
+            <div class="sc-stats">
+              <span>52 segments</span>
+              <span>1h</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══ PAGE: ACTIVITÉ ═══ -->
+    <div class="page" id="page-activity">
+      <div class="page-header">
+        <h2>Activité</h2>
+        <p>Historique des actions effectuées par Aura en votre nom.</p>
+      </div>
+      <div class="page-content">
+
+        <div class="timeline-section-title">Aujourd'hui · 13 mars</div>
+        <div class="timeline">
+          <div class="tl-item tl-email">
+            <div class="tl-time">10:16</div>
+            <div class="tl-action">
+              <strong>Email envoyé</strong> — Résumé réunion marketing à sarah@, thomas@, marie@
+              <span class="tl-tag tag-gmail">Gmail</span>
+            </div>
+          </div>
+          <div class="tl-item tl-calendar">
+            <div class="tl-time">10:02</div>
+            <div class="tl-action">
+              <strong>Agenda consulté</strong> — 3 rendez-vous récupérés pour aujourd'hui
+              <span class="tl-tag tag-calendar">Calendar</span>
+            </div>
+          </div>
+          <div class="tl-item tl-summary">
+            <div class="tl-time">9:46</div>
+            <div class="tl-action">
+              <strong>Résumé généré</strong> — Session réunion marketing (42 segments, 45 min)
+              <span class="tl-tag tag-aura">Aura</span>
+            </div>
+          </div>
+          <div class="tl-item tl-search">
+            <div class="tl-time">9:30</div>
+            <div class="tl-action">
+              <strong>Contexte enrichi</strong> — 15 segments récupérés pour "résumé réunion"
+              <span class="tl-tag tag-search">Contexte</span>
+            </div>
+          </div>
+          <div class="tl-item tl-note">
+            <div class="tl-time">9:01</div>
+            <div class="tl-action">
+              <strong>Session démarrée</strong> — Écoute passive activée
+              <span class="tl-tag tag-aura">Aura</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="timeline-section-title">Hier · 12 mars</div>
+        <div class="timeline">
+          <div class="tl-item tl-hubspot">
+            <div class="tl-time">16:50</div>
+            <div class="tl-action">
+              <strong>Contact créé</strong> — Nouveau lead ajouté dans pipeline "Inbound Q1"
+              <span class="tl-tag tag-hubspot">HubSpot</span>
+            </div>
+          </div>
+          <div class="tl-item tl-email">
+            <div class="tl-time">16:30</div>
+            <div class="tl-action">
+              <strong>Email envoyé</strong> — Rapport KPIs Q1 à direction@company.com
+              <span class="tl-tag tag-gmail">Gmail</span>
+            </div>
+          </div>
+          <div class="tl-item tl-summary">
+            <div class="tl-time">15:35</div>
+            <div class="tl-action">
+              <strong>Résumé généré</strong> — Sprint planning (68 segments, 1h30)
+              <span class="tl-tag tag-aura">Aura</span>
+            </div>
+          </div>
+          <div class="tl-item tl-calendar">
+            <div class="tl-time">14:25</div>
+            <div class="tl-action">
+              <strong>Événement créé</strong> — "Retrospective sprint" ajouté jeudi 17h
+              <span class="tl-tag tag-calendar">Calendar</span>
+            </div>
+          </div>
+          <div class="tl-item tl-search">
+            <div class="tl-time">14:10</div>
+            <div class="tl-action">
+              <strong>Mémoire consultée</strong> — Recherche "vélocité sprint précédent"
+              <span class="tl-tag tag-search">Contexte</span>
+            </div>
+          </div>
+          <div class="tl-item tl-email">
+            <div class="tl-time">11:20</div>
+            <div class="tl-action">
+              <strong>3 emails lus</strong> — Résumé des emails non lus de la matinée
+              <span class="tl-tag tag-gmail">Gmail</span>
+            </div>
+          </div>
+          <div class="tl-item tl-note">
+            <div class="tl-time">9:15</div>
+            <div class="tl-action">
+              <strong>Session démarrée</strong> — Écoute passive activée
+              <span class="tl-tag tag-aura">Aura</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══ PAGE: PARAMÈTRES ═══ -->
+    <div class="page" id="page-settings">
+      <div class="page-header">
+        <h2>Paramètres</h2>
+      </div>
+
+      <div class="settings-layout">
+        <!-- Settings left nav -->
+        <nav class="settings-nav">
+          <button class="settings-nav-item active" onclick="showSettingsSection('general', this)">Général</button>
+          <button class="settings-nav-item" onclick="showSettingsSection('account', this)">Compte</button>
+          <button class="settings-nav-item" onclick="showSettingsSection('voice', this)">Assistant vocal</button>
+          <button class="settings-nav-item" onclick="showSettingsSection('listening', this)">Écoute passive</button>
+          <button class="settings-nav-item" onclick="showSettingsSection('connectors', this)">Connecteurs</button>
+          <button class="settings-nav-item" onclick="showSettingsSection('danger', this)">Zone danger</button>
+        </nav>
+
+        <!-- Settings content -->
+        <div class="settings-content">
+
+          <!-- ── GÉNÉRAL ── -->
+          <div class="settings-section active" id="settings-general">
+            <h3>Général</h3>
+            <p class="section-desc">Préférences générales de l'application.</p>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Langue</div>
+                <div class="setting-desc">Langue de l'interface et des réponses d'Aura.</div>
+              </div>
+              <div class="setting-control">
+                <select class="setting-select">
+                  <option selected>Français</option>
+                  <option>English</option>
+                  <option>Español</option>
+                  <option>Deutsch</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Thème</div>
+                <div class="setting-desc">Apparence de l'interface.</div>
+              </div>
+              <div class="setting-control">
+                <select class="setting-select">
+                  <option selected>Clair</option>
+                  <option>Sombre</option>
+                  <option>Système</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Fuseau horaire</div>
+                <div class="setting-desc">Utilisé pour les résumés et l'affichage des heures.</div>
+              </div>
+              <div class="setting-control">
+                <select class="setting-select">
+                  <option selected>Europe/Paris (UTC+1)</option>
+                  <option>Europe/London (UTC+0)</option>
+                  <option>America/New_York (UTC-5)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Notifications</div>
+                <div class="setting-desc">Recevoir des notifications quand Aura termine une action.</div>
+              </div>
+              <div class="setting-control">
+                <button class="toggle on" onclick="this.classList.toggle('on')"></button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── COMPTE ── -->
+          <div class="settings-section" id="settings-account">
+            <h3>Compte</h3>
+            <p class="section-desc">Informations de votre compte.</p>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Nom</div>
+              </div>
+              <div class="setting-control">
+                <input class="setting-input" type="text" value="Badreddine" />
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Email</div>
+              </div>
+              <div class="setting-control">
+                <input class="setting-input" type="email" value="badreddine@aura.ai" />
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Mot de passe</div>
+                <div class="setting-desc">Dernière modification il y a 3 mois.</div>
+              </div>
+              <div class="setting-control">
+                <button class="setting-btn">Modifier</button>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Plan</div>
+                <div class="setting-desc">Votre abonnement actuel.</div>
+              </div>
+              <div class="setting-control">
+                <span style="font-size:13px; font-weight:600; color:var(--orange);">Pro</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── ASSISTANT VOCAL ── -->
+          <div class="settings-section" id="settings-voice">
+            <h3>Assistant vocal</h3>
+            <p class="section-desc">Configuration de la voix et du comportement vocal d'Aura.</p>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Mot de réveil</div>
+                <div class="setting-desc">Le mot-clé qui active Aura. Dites-le pour commencer à parler.</div>
+              </div>
+              <div class="setting-control">
+                <input class="setting-input" type="text" value="Aura" style="width:120px;" />
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Voix</div>
+                <div class="setting-desc">Voix utilisée pour les réponses vocales (via ElevenLabs).</div>
+              </div>
+              <div class="setting-control">
+                <select class="setting-select">
+                  <option selected>Charlotte (FR)</option>
+                  <option>Antoine (FR)</option>
+                  <option>Rachel (EN)</option>
+                  <option>Adam (EN)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Vitesse de parole</div>
+                <div class="setting-desc">Vitesse de lecture des réponses vocales.</div>
+              </div>
+              <div class="setting-control">
+                <select class="setting-select">
+                  <option>Lente</option>
+                  <option selected>Normale</option>
+                  <option>Rapide</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Barge-in</div>
+                <div class="setting-desc">Pouvoir interrompre Aura pendant qu'elle parle en parlant directement.</div>
+              </div>
+              <div class="setting-control">
+                <button class="toggle on" onclick="this.classList.toggle('on')"></button>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Continuité conversationnelle</div>
+                <div class="setting-desc">Après une réponse, enchaîner sans redire le mot de réveil (fenêtre de 8 secondes).</div>
+              </div>
+              <div class="setting-control">
+                <button class="toggle on" onclick="this.classList.toggle('on')"></button>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Son de confirmation</div>
+                <div class="setting-desc">Jouer un bip quand Aura commence à écouter.</div>
+              </div>
+              <div class="setting-control">
+                <button class="toggle on" onclick="this.classList.toggle('on')"></button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── ÉCOUTE PASSIVE ── -->
+          <div class="settings-section" id="settings-listening">
+            <h3>Écoute passive</h3>
+            <p class="section-desc">Aura écoute en continu pour capturer le contexte de vos réunions et conversations.</p>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Écoute passive</div>
+                <div class="setting-desc">Capturer le contexte ambiant en arrière-plan pour enrichir les réponses.</div>
+              </div>
+              <div class="setting-control">
+                <button class="toggle on" onclick="this.classList.toggle('on')"></button>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Résumés automatiques</div>
+                <div class="setting-desc">Générer des résumés toutes les 30 segments et en fin de session.</div>
+              </div>
+              <div class="setting-control">
+                <button class="toggle on" onclick="this.classList.toggle('on')"></button>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Timeout de session</div>
+                <div class="setting-desc">Durée d'inactivité avant de terminer une session d'écoute.</div>
+              </div>
+              <div class="setting-control">
+                <select class="setting-select">
+                  <option>5 minutes</option>
+                  <option selected>15 minutes</option>
+                  <option>30 minutes</option>
+                  <option>1 heure</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Rétention des segments</div>
+                <div class="setting-desc">Durée de conservation des segments bruts dans la base de données.</div>
+              </div>
+              <div class="setting-control">
+                <select class="setting-select">
+                  <option>7 jours</option>
+                  <option selected>30 jours</option>
+                  <option>90 jours</option>
+                  <option>Illimité</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Langue de transcription</div>
+                <div class="setting-desc">Langue principale utilisée pour la reconnaissance vocale.</div>
+              </div>
+              <div class="setting-control">
+                <select class="setting-select">
+                  <option selected>Français</option>
+                  <option>Anglais</option>
+                  <option>Détection auto</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── CONNECTEURS ── -->
+          <div class="settings-section" id="settings-connectors">
+            <h3>Connecteurs</h3>
+            <p class="section-desc">Connectez vos applications pour qu'Aura puisse agir en votre nom.</p>
+
+            <div class="connector-row">
+              <div class="connector-icon">📧</div>
+              <div class="connector-info">
+                <div class="connector-name">Gmail</div>
+                <div class="connector-desc">Lire et envoyer des emails</div>
+              </div>
+              <span class="connector-status connected">Connecté</span>
+              <button class="setting-btn" style="margin-left:8px;">···</button>
+            </div>
+
+            <div class="connector-row">
+              <div class="connector-icon">📅</div>
+              <div class="connector-info">
+                <div class="connector-name">Google Calendar</div>
+                <div class="connector-desc">Consulter et créer des événements</div>
+              </div>
+              <span class="connector-status connected">Connecté</span>
+              <button class="setting-btn" style="margin-left:8px;">···</button>
+            </div>
+
+            <div class="connector-row">
+              <div class="connector-icon" style="color:#ff7a59;">⬡</div>
+              <div class="connector-info">
+                <div class="connector-name">HubSpot</div>
+                <div class="connector-desc">CRM, contacts et pipeline</div>
+              </div>
+              <span class="connector-status connected">Connecté</span>
+              <button class="setting-btn" style="margin-left:8px;">···</button>
+            </div>
+
+            <div class="connector-row">
+              <div class="connector-icon">💬</div>
+              <div class="connector-info">
+                <div class="connector-name">Slack</div>
+                <div class="connector-desc">Envoyer des messages et notifications</div>
+              </div>
+              <button class="setting-btn primary">Connecter</button>
+            </div>
+
+            <div class="connector-row">
+              <div class="connector-icon">📨</div>
+              <div class="connector-info">
+                <div class="connector-name">Outlook</div>
+                <div class="connector-desc">Emails et calendrier Microsoft</div>
+              </div>
+              <button class="setting-btn primary">Connecter</button>
+            </div>
+
+            <div class="connector-row">
+              <div class="connector-icon">📞</div>
+              <div class="connector-info">
+                <div class="connector-name">Twilio</div>
+                <div class="connector-desc">Appels et SMS</div>
+              </div>
+              <button class="setting-btn primary">Connecter</button>
+            </div>
+          </div>
+
+          <!-- ── ZONE DANGER ── -->
+          <div class="settings-section" id="settings-danger">
+            <h3>Zone danger</h3>
+            <p class="section-desc">Actions irréversibles. Procédez avec précaution.</p>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Supprimer l'historique</div>
+                <div class="setting-desc">Supprimer toutes les discussions, segments et résumés. Cette action est irréversible.</div>
+              </div>
+              <div class="setting-control">
+                <button class="setting-btn danger">Supprimer tout</button>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Déconnecter tous les services</div>
+                <div class="setting-desc">Révoquer l'accès à Gmail, Calendar, HubSpot et tous les connecteurs.</div>
+              </div>
+              <div class="setting-control">
+                <button class="setting-btn danger">Tout déconnecter</button>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Supprimer le compte</div>
+                <div class="setting-desc">Supprimer définitivement votre compte et toutes les données associées.</div>
+              </div>
+              <div class="setting-control">
+                <button class="setting-btn danger">Supprimer le compte</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ PAGE: CONTACTS ═══ -->
+    <div class="page" id="page-contacts">
+      <div class="page-header">
+        <h2>Contacts</h2>
+        <p>Les personnes qu'Aura peut contacter en votre nom.</p>
+      </div>
+      <div class="page-content">
+        <div class="contacts-header-bar">
+          <input class="contacts-search" type="text" placeholder="Rechercher un contact..." />
+          <button class="btn-add-contact" onclick="document.getElementById('addContactModal').classList.add('visible')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Ajouter un contact
+          </button>
+        </div>
+
+        <table class="contacts-table">
+          <thead>
+            <tr>
+              <th>Nom</th>
+              <th>Email</th>
+              <th>Téléphone</th>
+              <th>Entreprise</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="contact-name-cell">
+                  <div class="contact-avatar ca-1">SM</div>
+                  <span class="contact-name-text">Sarah Martin</span>
+                </div>
+              </td>
+              <td>sarah@company.com</td>
+              <td>+33 6 12 34 56 78</td>
+              <td>Company SAS</td>
+              <td>
+                <div class="contact-actions">
+                  <button class="contact-action-btn">Modifier</button>
+                  <button class="contact-action-btn">Supprimer</button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="contact-name-cell">
+                  <div class="contact-avatar ca-2">TD</div>
+                  <span class="contact-name-text">Thomas Dupont</span>
+                </div>
+              </td>
+              <td>thomas@company.com</td>
+              <td>+33 6 98 76 54 32</td>
+              <td>Company SAS</td>
+              <td>
+                <div class="contact-actions">
+                  <button class="contact-action-btn">Modifier</button>
+                  <button class="contact-action-btn">Supprimer</button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="contact-name-cell">
+                  <div class="contact-avatar ca-3">ML</div>
+                  <span class="contact-name-text">Marie Lefèvre</span>
+                </div>
+              </td>
+              <td>marie@company.com</td>
+              <td>+33 6 55 44 33 22</td>
+              <td>Company SAS</td>
+              <td>
+                <div class="contact-actions">
+                  <button class="contact-action-btn">Modifier</button>
+                  <button class="contact-action-btn">Supprimer</button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="contact-name-cell">
+                  <div class="contact-avatar ca-4">JR</div>
+                  <span class="contact-name-text">Jean Rousseau</span>
+                </div>
+              </td>
+              <td>jean.rousseau@investcap.fr</td>
+              <td>+33 1 44 55 66 77</td>
+              <td>InvestCap</td>
+              <td>
+                <div class="contact-actions">
+                  <button class="contact-action-btn">Modifier</button>
+                  <button class="contact-action-btn">Supprimer</button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="contact-name-cell">
+                  <div class="contact-avatar ca-5">AB</div>
+                  <span class="contact-name-text">Alice Bernard</span>
+                </div>
+              </td>
+              <td>alice@agence-crea.com</td>
+              <td>+33 6 11 22 33 44</td>
+              <td>Agence Créa</td>
+              <td>
+                <div class="contact-actions">
+                  <button class="contact-action-btn">Modifier</button>
+                  <button class="contact-action-btn">Supprimer</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══ PAGE: DISCUSSIONS ═══ -->
+    <div class="page" id="page-discussions">
+      <div class="page-header">
+        <h2>Discussions</h2>
+        <p>Toutes vos conversations avec Aura.</p>
+      </div>
+      <div class="page-content" style="max-width: 720px;">
+        <div class="discussions-search-bar">
+          <svg class="discussions-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input class="discussions-search" type="text" placeholder="Rechercher dans vos conversations..." />
+        </div>
+
+        <div class="discussions-list">
+
+          <div class="discussions-section-label">Aujourd'hui</div>
+
+          <div class="discussion-item" onclick="showPage('chat', null)">
+            <div class="discussion-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="discussion-info">
+              <div class="discussion-title">Réunion marketing Q2</div>
+              <div class="discussion-meta">Dernier message il y a 24 minutes</div>
+            </div>
+            <div class="discussion-time">9:28</div>
+          </div>
+
+          <div class="discussion-item" onclick="showPage('chat', null)">
+            <div class="discussion-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="discussion-info">
+              <div class="discussion-title">Emails clients prioritaires</div>
+              <div class="discussion-meta">Dernier message il y a 1 heure</div>
+            </div>
+            <div class="discussion-time">10:15</div>
+          </div>
+
+          <div class="discussions-section-label">Hier</div>
+
+          <div class="discussion-item" onclick="showPage('chat', null)">
+            <div class="discussion-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="discussion-info">
+              <div class="discussion-title">Planning sprint prochain</div>
+              <div class="discussion-meta">Dernier message il y a 18 heures</div>
+            </div>
+            <div class="discussion-time">17:42</div>
+          </div>
+
+          <div class="discussion-item" onclick="showPage('chat', null)">
+            <div class="discussion-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="discussion-info">
+              <div class="discussion-title">Analyse KPIs Q1</div>
+              <div class="discussion-meta">Dernier message il y a 20 heures</div>
+            </div>
+            <div class="discussion-time">15:30</div>
+          </div>
+
+          <div class="discussions-section-label">11 mars</div>
+
+          <div class="discussion-item" onclick="showPage('chat', null)">
+            <div class="discussion-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="discussion-info">
+              <div class="discussion-title">Pitch investisseurs Série A</div>
+              <div class="discussion-meta">Dernier message il y a 2 jours</div>
+            </div>
+            <div class="discussion-time">16:20</div>
+          </div>
+
+          <div class="discussion-item" onclick="showPage('chat', null)">
+            <div class="discussion-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="discussion-info">
+              <div class="discussion-title">Config intégration HubSpot</div>
+              <div class="discussion-meta">Dernier message il y a 2 jours</div>
+            </div>
+            <div class="discussion-time">11:05</div>
+          </div>
+
+          <div class="discussions-section-label">10 mars</div>
+
+          <div class="discussion-item" onclick="showPage('chat', null)">
+            <div class="discussion-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="discussion-info">
+              <div class="discussion-title">Préparation démo client</div>
+              <div class="discussion-meta">Dernier message il y a 3 jours</div>
+            </div>
+            <div class="discussion-time">14:15</div>
+          </div>
+
+          <div class="discussion-item" onclick="showPage('chat', null)">
+            <div class="discussion-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="discussion-info">
+              <div class="discussion-title">Onboarding nouvel employé</div>
+              <div class="discussion-meta">Dernier message il y a 3 jours</div>
+            </div>
+            <div class="discussion-time">10:30</div>
+          </div>
+
+          <div class="discussion-item" onclick="showPage('chat', null)">
+            <div class="discussion-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="discussion-info">
+              <div class="discussion-title">Revue contrat fournisseur</div>
+              <div class="discussion-meta">Dernier message il y a 3 jours</div>
+            </div>
+            <div class="discussion-time">9:00</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Add Contact Modal -->
+<div class="modal-overlay" id="addContactModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Ajouter un contact</h3>
+      <button class="modal-close" onclick="document.getElementById('addContactModal').classList.remove('visible')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Prénom</label>
+          <input class="form-input" type="text" placeholder="Jean" />
+        </div>
+        <div class="form-group">
+          <label>Nom</label>
+          <input class="form-input" type="text" placeholder="Dupont" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input class="form-input" type="email" placeholder="jean@entreprise.com" />
+      </div>
+      <div class="form-group">
+        <label>Téléphone</label>
+        <input class="form-input" type="tel" placeholder="+33 6 12 34 56 78" />
+      </div>
+      <div class="form-group">
+        <label>Entreprise</label>
+        <input class="form-input" type="text" placeholder="Nom de l'entreprise" />
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <input class="form-input" type="text" placeholder="Notes optionnelles..." />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn cancel" onclick="document.getElementById('addContactModal').classList.remove('visible')">Annuler</button>
+      <button class="modal-btn save" onclick="document.getElementById('addContactModal').classList.remove('visible')">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ═══ PAGE NAVIGATION ═══
+  function showPage(page, btn) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    if (btn) btn.classList.add('active');
+  }
+
+  // ═══ ORB STATES ═══
+  const STATES = ['idle', 'listening', 'thinking', 'speaking', 'conversing', 'error'];
+  const LABELS = { idle: 'En veille', listening: 'Écoute...', thinking: 'Réflexion...', speaking: 'Parle...', conversing: 'Continuez...', error: 'Erreur' };
+  let currentIdx = 0;
+
+  function setState(state) {
+    document.getElementById('orbSection').setAttribute('data-state', state);
+    document.getElementById('orbStatus').textContent = LABELS[state];
+    document.getElementById('orbTranscript').classList.toggle('visible', state === 'listening');
+    currentIdx = STATES.indexOf(state);
+    document.querySelectorAll('.state-dot').forEach((d, i) => d.classList.toggle('active', i === currentIdx));
+  }
+
+  function cycleState() {
+    currentIdx = (currentIdx + 1) % STATES.length;
+    setState(STATES[currentIdx]);
+  }
+
+  // ═══ SETTINGS NAV ═══
+  function showSettingsSection(section, btn) {
+    document.querySelectorAll('.settings-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.settings-nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('settings-' + section).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  document.getElementById('messagesContainer').scrollTop = 99999;
+</script>
+
+</body>
+</html>

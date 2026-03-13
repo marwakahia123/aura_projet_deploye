@@ -25,13 +25,23 @@ export interface ChatResult {
  */
 export async function sendChat(
   command: string,
-  context: TranscriptionSegment[]
+  context: TranscriptionSegment[],
+  accessToken?: string
 ): Promise<ChatResult> {
   // --- Step 1: Get text from agent ---
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
+  }
+
   const chatRes = await fetch(`${BACKEND_URL}/api/chat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ command, context }),
+    headers,
+    body: JSON.stringify({
+      command,
+      context,
+      user_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    }),
   });
 
   if (!chatRes.ok) {

@@ -21,18 +21,27 @@ async def get_response(
     context: list[TranscriptionSegment],
     agent_url: str,
     agent_token: str,
+    user_token: str | None = None,
+    enriched_context: str | None = None,
 ) -> str:
-    context_string = _build_context_string(context)
+    # Use enriched context if provided (from context_service), else build from segments
+    context_string = enriched_context if enriched_context else _build_context_string(context)
 
-    logger.info("Calling agent: command=%s, context_len=%d", command[:80], len(context_string))
+    logger.info("Calling agent: command=%s, context_len=%d, has_user_token=%s",
+                command[:80], len(context_string), bool(user_token))
+
+    # Build headers: user JWT for Authorization (RLS), anon key as apikey (Supabase requirement)
+    headers: dict[str, str] = {"Content-Type": "application/json"}
+    if user_token:
+        headers["Authorization"] = f"Bearer {user_token}"
+        headers["apikey"] = agent_token
+    else:
+        headers["Authorization"] = f"Bearer {agent_token}"
 
     async with httpx.AsyncClient(timeout=120.0) as client:
         response = await client.post(
             agent_url,
-            headers={
-                "Authorization": f"Bearer {agent_token}",
-                "Content-Type": "application/json",
-            },
+            headers=headers,
             json={
                 "message": command,
                 "context": context_string,
