@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -5,9 +7,12 @@ from app.routes import activity, chat, contacts, discussions, health, stt_token,
 
 app = FastAPI(title="AURA POC Backend")
 
+_default_origins = "http://localhost:3000,http://localhost:3001,http://localhost:3002"
+allowed_origins = os.getenv("CORS_ORIGINS", _default_origins).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

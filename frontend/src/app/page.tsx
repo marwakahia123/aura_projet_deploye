@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthContext } from "@/context/AuthContext";
 import { useAuraSessionContext } from "@/context/AuraSessionContext";
@@ -15,8 +16,13 @@ export default function Home() {
   const { user, loading: authLoading } = useAuthContext();
   const session = useAuraSessionContext();
 
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/login");
+    }
+  }, [authLoading, user, router]);
+
   if (!authLoading && !user) {
-    router.replace("/login");
     return null;
   }
 

@@ -1,10 +1,14 @@
 from pathlib import Path
 
+import os
+
 import numpy as np
 from openwakeword.model import Model
 
-# Chemin absolu vers le modele, relatif a la racine du projet (backend/../openwake/)
-_MODEL_PATH = str(Path(__file__).resolve().parents[3] / "openwake" / "Aura_test.onnx")
+# En Docker le volume est monté sur /openwake, sinon on remonte depuis backend/../openwake/
+_LOCAL_PATH = str(Path(__file__).resolve().parents[3] / "openwake" / "Aura_test.onnx")
+_DOCKER_PATH = "/openwake/Aura_test.onnx"
+_MODEL_PATH = os.getenv("WAKEWORD_MODEL_PATH", _DOCKER_PATH if os.path.exists(_DOCKER_PATH) else _LOCAL_PATH)
 
 
 class WakeWordService:
