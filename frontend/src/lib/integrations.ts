@@ -41,12 +41,11 @@ async function callEdgeFunction(
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "apikey": SUPABASE_ANON_KEY,
+    "Authorization": `Bearer ${accessToken || SUPABASE_ANON_KEY}`,
   };
-  if (accessToken) {
-    headers["Authorization"] = `Bearer ${accessToken}`;
-  }
 
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, {
+  const baseUrl = SUPABASE_URL.replace(/\/+$/, "");
+  const res = await fetch(`${baseUrl}/functions/v1/${functionName}`, {
     method: "POST",
     headers,
     body: JSON.stringify(body),
