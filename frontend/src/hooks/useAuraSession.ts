@@ -33,6 +33,7 @@ interface UseAuraSessionReturn {
   errors: string[];
   muted: boolean;
   initialize: () => Promise<void>;
+  cleanup: () => void;
   triggerWakeWord: () => void;
   toggleMute: () => void;
   startNewConversation: () => void;
