@@ -6,6 +6,7 @@
 // ============================================================
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -39,6 +40,7 @@ async function callEdgeFunction(
 ): Promise<Record<string, unknown>> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "apikey": SUPABASE_ANON_KEY,
   };
   if (accessToken) {
     headers["Authorization"] = `Bearer ${accessToken}`;

@@ -261,11 +261,13 @@ Deno.serve(async (req: Request) => {
           );
         }
         const fileBlob = await fileResponse.blob();
+        console.log(`[slack-api] Fichier téléchargé: ${fileBlob.size} bytes`);
 
-        // 3. Resolve channel name to ID if needed (files.uploadV2 requires channel_id)
+        // 3. Resolve channel name to ID (required for file upload)
         let channelId = channel;
-        if (channel.startsWith("#")) {
-          const channelName = channel.replace(/^#/, "");
+        const channelName = channel.replace(/^#/, "");
+        // Always resolve to ID unless it already looks like a Slack ID (starts with C/G)
+        if (!channel.match(/^[CG][A-Z0-9]+$/)) {
           const { ok: listOk, data: listData } = await slackFetch(slackToken, "conversations.list", {
             types: "public_channel,private_channel",
             exclude_archived: true,
@@ -274,11 +276,16 @@ Deno.serve(async (req: Request) => {
           if (listOk && listData.channels) {
             // deno-lint-ignore no-explicit-any
             const found = listData.channels.find((c: any) => c.name === channelName);
-            if (found) channelId = found.id;
+            if (found) {
+              channelId = found.id;
+              console.log(`[slack-api] Canal résolu: ${channelName} → ${channelId}`);
+            } else {
+              console.warn(`[slack-api] Canal "${channelName}" introuvable, utilisation tel quel: ${channel}`);
+            }
           }
         }
 
-        // 4. Upload file via 3-step process (getUploadURLExternal → upload → completeUploadExternal)
+        // 4. Upload file via 3-step process
 
         // Step 4a: Get pre-signed upload URL
         const { ok: urlOk, data: urlData } = await slackFetch(slackToken, "files.getUploadURLExternal", {
@@ -287,7 +294,7 @@ Deno.serve(async (req: Request) => {
         });
 
         if (!urlOk || !urlData.upload_url || !urlData.file_id) {
-          console.error(`[slack-api] getUploadURLExternal error:`, urlData.error);
+          console.error(`[slack-api] getUploadURLExternal error:`, JSON.stringify(urlData));
           return jsonResponse({ error: slackError(urlData.error || "Impossible d'obtenir l'URL d'upload Slack") }, 400);
         }
 
@@ -305,17 +312,19 @@ Deno.serve(async (req: Request) => {
           return jsonResponse({ error: `Erreur upload fichier: HTTP ${uploadRes.status}` }, 400);
         }
 
-        console.log(`[slack-api] Fichier uploadé, finalisation...`);
+        console.log(`[slack-api] Fichier uploadé, finalisation avec channel_id=${channelId}...`);
 
         // Step 4c: Complete upload and share to channel
-        const { ok: completeOk, data: completeData } = await slackFetch(slackToken, "files.completeUploadExternal", {
+        const completeBody = {
           files: [{ id: urlData.file_id, title: file_name }],
           channel_id: channelId,
           initial_comment: message,
-        });
+        };
+        console.log(`[slack-api] completeUploadExternal body:`, JSON.stringify(completeBody));
+        const { ok: completeOk, data: completeData } = await slackFetch(slackToken, "files.completeUploadExternal", completeBody);
 
         if (!completeOk) {
-          console.error(`[slack-api] completeUploadExternal error:`, completeData.error);
+          console.error(`[slack-api] completeUploadExternal error:`, JSON.stringify(completeData));
           return jsonResponse({ error: slackError(completeData.error) }, 400);
         }
 
