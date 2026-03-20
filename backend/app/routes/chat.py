@@ -90,20 +90,26 @@ async def chat(request: ChatRequest, raw_request: Request):
         logger.info("═══ NO ENRICHED CONTEXT (fallback to raw segments) ═══")
 
     try:
-        response_text = await get_response(
+        agent_result = await get_response(
             command=request.command,
             context=request.context,
             agent_url=settings.AURA_AGENT_URL,
             agent_token=settings.AURA_AGENT_TOKEN,
             user_token=user_token,
             enriched_context=enriched_context,
+            conversation_id=request.conversation_id,
         )
+        response_text = agent_result["text"]
+        attachments = agent_result.get("attachments")
         logger.info("Agent responded: '%s'", response_text[:100])
     except Exception as e:
         logger.error("Agent error: %s: %s", type(e).__name__, e)
         raise HTTPException(status_code=502, detail=f"Agent error: {type(e).__name__}: {e}")
 
-    return {"text": response_text}
+    result = {"text": response_text}
+    if attachments:
+        result["attachments"] = attachments
+    return result
 
 
 @router.post("/api/tts")

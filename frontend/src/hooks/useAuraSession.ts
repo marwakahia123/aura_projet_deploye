@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AppState } from "@/components/StatusBar";
-import type { ConversationEntry } from "@/components/TranscriptPanel";
+import type { ConversationEntry } from "@/lib/types";
 import { useAudioCapture } from "./useAudioCapture";
 import { usePassiveSTT } from "./usePassiveSTT";
 import { useCommandSTT } from "./useCommandSTT";
 import { useOpenWakeWord } from "./useOpenWakeWord";
 import { useAudioPlayer } from "./useAudioPlayer";
 import { useAuthContext } from "@/context/AuthContext";
-import { sendChat } from "@/lib/api";
+import { sendChat, createConversation, addConversationMessage, listConversations, fetchConversationDetail } from "@/lib/api";
 import { contextBuffer } from "@/lib/contextBuffer";
 import { contextPersistence } from "@/lib/contextPersistence";
 import {
@@ -35,6 +35,8 @@ interface UseAuraSessionReturn {
   initialize: () => Promise<void>;
   triggerWakeWord: () => void;
   toggleMute: () => void;
+  startNewConversation: () => void;
+  loadConversation: (conversationId: string) => Promise<void>;
 }
 
 function playBeep() {
@@ -71,6 +73,7 @@ export function useAuraSession(): UseAuraSessionReturn {
     null
   );
   const bargeInFrameCountRef = useRef(0);
+  const conversationIdRef = useRef<string | null>(null);
 
   const { session: authSession } = useAuthContext();
   const audio = useAudioCapture();
@@ -130,7 +133,7 @@ export function useAuraSession(): UseAuraSessionReturn {
           contextCount: context.length,
           hasToken: !!accessToken,
         });
-        const result = await sendChat(command, context, accessToken);
+        const result = await sendChat(command, context, accessToken, conversationIdRef.current);
         console.log("[AURA] API response:", {
           text: result.text?.substring(0, 100),
           hasAudio: !!result.audioBlob,
@@ -142,8 +145,30 @@ export function useAuraSession(): UseAuraSessionReturn {
           timestamp: new Date(),
           command,
           response: result.text,
+          attachments: result.attachments,
         };
         setHistory((prev) => [...prev, entry]);
+
+        // Persist conversation to backend
+        if (accessToken) {
+          try {
+            if (!conversationIdRef.current) {
+              const conv = await createConversation(accessToken, {
+                title: command.slice(0, 80),
+                messages: [
+                  { role: "user", content: command },
+                  { role: "assistant", content: result.text, attachments: result.attachments },
+                ],
+              });
+              conversationIdRef.current = conv.conversation?.id || conv.id;
+            } else {
+              await addConversationMessage(accessToken, conversationIdRef.current, "user", command);
+              await addConversationMessage(accessToken, conversationIdRef.current, "assistant", result.text, result.attachments);
+            }
+          } catch (e) {
+            console.warn("[AURA] Failed to persist conversation:", e);
+          }
+        }
 
         // Add Q&A to context buffer for conversational continuity
         contextBuffer.add(`[Commande utilisateur]: ${command}`);
@@ -178,7 +203,7 @@ export function useAuraSession(): UseAuraSessionReturn {
         );
       }
     },
-    [passiveSTT, player, startConversationWindow]
+    [passiveSTT, player, startConversationWindow, authSession?.access_token]
   );
 
   const commandSTT = useCommandSTT(handleCommandComplete);
@@ -250,6 +275,43 @@ export function useAuraSession(): UseAuraSessionReturn {
       passiveSTT.resume();
     }
   }, [passiveSTT]);
+
+  const startNewConversation = useCallback(() => {
+    conversationIdRef.current = null;
+    setHistory([]);
+    contextBuffer.clear();
+  }, []);
+
+  const loadConversation = useCallback(async (conversationId: string) => {
+    const token = authSession?.access_token;
+    if (!token) return;
+    try {
+      const detail = await fetchConversationDetail(token, conversationId);
+      const msgs = detail.messages || [];
+      const restored: ConversationEntry[] = [];
+      for (let i = 0; i < msgs.length - 1; i += 2) {
+        if (msgs[i].role === "user" && msgs[i + 1]?.role === "assistant") {
+          restored.push({
+            id: msgs[i].id || crypto.randomUUID(),
+            timestamp: new Date(msgs[i].created_at),
+            command: msgs[i].content,
+            response: msgs[i + 1].content,
+            attachments: msgs[i + 1].attachments || undefined,
+          });
+        }
+      }
+      conversationIdRef.current = conversationId;
+      setHistory(restored);
+      contextBuffer.clear();
+      // Re-populate context buffer with conversation history
+      for (const entry of restored) {
+        contextBuffer.add(`[Commande utilisateur]: ${entry.command}`);
+        contextBuffer.add(`[Réponse Aura]: ${entry.response}`);
+      }
+    } catch (e) {
+      console.warn("[AURA] Failed to load conversation:", e);
+    }
+  }, [authSession?.access_token]);
 
   // Route PCM chunks to the correct STT + barge-in / conversation VAD
   const handlePCMChunk = useCallback(
@@ -349,23 +411,63 @@ export function useAuraSession(): UseAuraSessionReturn {
     clearConversationTimer();
 
     try {
-      // 1. Request mic access — returns values immediately (no React state delay)
+      // 0. Restore recent conversation in background (non-blocking)
+      // Skip if user explicitly requested a new conversation
+      const skipRestore = sessionStorage.getItem("aura_new_conversation") === "1";
+      if (skipRestore) {
+        sessionStorage.removeItem("aura_new_conversation");
+      }
+      const token = authSession?.access_token;
+      if (token && !skipRestore) {
+        (async () => {
+          try {
+            const convos = await listConversations(token, 1);
+            const list = Array.isArray(convos) ? convos : convos.conversations ?? [];
+            if (list.length > 0) {
+              const recent = list[0];
+              const age = Date.now() - new Date(recent.updated_at || recent.created_at).getTime();
+              if (age < 30 * 60 * 1000) {
+                const detail = await fetchConversationDetail(token, recent.id);
+                const msgs = detail.messages || [];
+                const restored: ConversationEntry[] = [];
+                for (let i = 0; i < msgs.length - 1; i += 2) {
+                  if (msgs[i].role === "user" && msgs[i + 1]?.role === "assistant") {
+                    restored.push({
+                      id: msgs[i].id || crypto.randomUUID(),
+                      timestamp: new Date(msgs[i].created_at),
+                      command: msgs[i].content,
+                      response: msgs[i + 1].content,
+                      attachments: msgs[i + 1].attachments || undefined,
+                    });
+                  }
+                }
+                if (restored.length > 0) {
+                  setHistory(restored);
+                  conversationIdRef.current = recent.id;
+                }
+              }
+            }
+          } catch (e) {
+            console.warn("[AURA] Failed to restore conversation:", e);
+          }
+        })();
+      }
+
+      // 1. Request mic access
       const mic = await audio.requestMicAccess();
 
-      // 2. Start context persistence session
-      await contextPersistence.startSession();
-
-      // 3. Start passive STT
-      await passiveSTT.start(mic.sampleRate);
-
-      // 4. Start openWakeWord
-      await wakeword.startListening(mic.stream);
+      // 2. Start STT + WakeWord in parallel
+      await Promise.allSettled([
+        passiveSTT.start(mic.sampleRate),
+        wakeword.startListening(mic.stream),
+      ]);
 
       // Ready
       setState("idle");
       stateRef.current = "idle";
       audioRoutingRef.current = "passive";
     } catch (err) {
+      // Only mic access failure reaches here
       setState("error");
       stateRef.current = "error";
       setErrors((prev) => [
@@ -373,7 +475,17 @@ export function useAuraSession(): UseAuraSessionReturn {
         err instanceof Error ? err.message : "Erreur initialisation",
       ]);
     }
-  }, [audio, passiveSTT, wakeword, clearConversationTimer]);
+  }, [audio, passiveSTT, wakeword, clearConversationTimer, authSession?.access_token]);
+
+  const cleanup = useCallback(() => {
+    clearConversationTimer();
+    passiveSTT.stop();
+    wakeword.stopListening();
+    audio.stopMic();
+    contextPersistence.endSession();
+    setState("initializing");
+    stateRef.current = "initializing";
+  }, [passiveSTT, wakeword, audio, clearConversationTimer]);
 
   return {
     state,
@@ -389,7 +501,10 @@ export function useAuraSession(): UseAuraSessionReturn {
     errors,
     muted,
     initialize,
+    cleanup,
     triggerWakeWord: handleWakeWord,
     toggleMute,
+    startNewConversation,
+    loadConversation,
   };
 }

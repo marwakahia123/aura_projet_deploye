@@ -9,7 +9,7 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 
 // ─── Types ──────────────────────────────────────────────────
 
-export type Provider = "gmail" | "outlook" | "hubspot" | "slack";
+export type Provider = "gmail" | "outlook" | "hubspot" | "slack" | "twilio" | "whatsapp";
 
 export interface Integration {
   provider: Provider;
@@ -127,6 +127,7 @@ export function getSlackOAuthUrl(): string {
       "users:read.email",
       "im:write",
       "groups:read",
+      "files:write",
     ].join(","),
     state: "slack",
   });
@@ -205,6 +206,20 @@ export async function fetchIntegrations(
       icon: "💬",
       connected: false,
     },
+    {
+      provider: "twilio",
+      label: "SMS (Twilio)",
+      description: "Envoi de SMS",
+      icon: "📱",
+      connected: false,
+    },
+    {
+      provider: "whatsapp",
+      label: "WhatsApp",
+      description: "Messages via WhatsApp Business",
+      icon: "💬",
+      connected: false,
+    },
   ];
 
   // Fetch email integrations (gmail + outlook)
@@ -278,6 +293,42 @@ export async function fetchIntegrations(
     console.error("[integrations] Failed to fetch Slack status:", err);
   }
 
+  // Fetch Twilio SMS
+  try {
+    const twilioData = await callEdgeFunction(
+      "send-sms",
+      { action: "get-config" },
+      accessToken
+    );
+    if (twilioData.configured) {
+      const idx = integrations.findIndex((i) => i.provider === "twilio");
+      if (idx !== -1) {
+        integrations[idx].connected = true;
+        integrations[idx].detail = twilioData.phone_number as string;
+      }
+    }
+  } catch (err) {
+    console.error("[integrations] Failed to fetch Twilio status:", err);
+  }
+
+  // Fetch WhatsApp
+  try {
+    const waData = await callEdgeFunction(
+      "send-whatsapp",
+      { action: "get-config" },
+      accessToken
+    );
+    if (waData.configured) {
+      const idx = integrations.findIndex((i) => i.provider === "whatsapp");
+      if (idx !== -1) {
+        integrations[idx].connected = true;
+        integrations[idx].detail = waData.display_phone as string;
+      }
+    }
+  } catch (err) {
+    console.error("[integrations] Failed to fetch WhatsApp status:", err);
+  }
+
   return integrations;
 }
 
@@ -307,6 +358,20 @@ export async function disconnectIntegration(
       await callEdgeFunction(
         "slack-api",
         { action: "disconnect" },
+        accessToken
+      );
+      break;
+    case "twilio":
+      await callEdgeFunction(
+        "send-sms",
+        { action: "delete-config" },
+        accessToken
+      );
+      break;
+    case "whatsapp":
+      await callEdgeFunction(
+        "send-whatsapp",
+        { action: "delete-config" },
         accessToken
       );
       break;

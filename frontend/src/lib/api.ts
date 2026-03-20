@@ -13,9 +13,16 @@ export async function fetchSttToken(): Promise<string> {
   return data.token;
 }
 
+export interface ChatAttachment {
+  file_path: string;
+  file_name: string;
+  type: string;
+}
+
 export interface ChatResult {
   text: string;
   audioBlob: Blob | null;
+  attachments?: ChatAttachment[];
 }
 
 /**
@@ -26,7 +33,8 @@ export interface ChatResult {
 export async function sendChat(
   command: string,
   context: TranscriptionSegment[],
-  accessToken?: string
+  accessToken?: string,
+  conversationId?: string | null
 ): Promise<ChatResult> {
   // --- Step 1: Get text from agent ---
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -34,14 +42,20 @@ export async function sendChat(
     headers["Authorization"] = `Bearer ${accessToken}`;
   }
 
+  // deno-lint-ignore no-explicit-any
+  const body: Record<string, any> = {
+    command,
+    context,
+    user_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  };
+  if (conversationId) {
+    body.conversation_id = conversationId;
+  }
+
   const chatRes = await fetch(`${BACKEND_URL}/api/chat`, {
     method: "POST",
     headers,
-    body: JSON.stringify({
-      command,
-      context,
-      user_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!chatRes.ok) {
@@ -50,7 +64,9 @@ export async function sendChat(
     throw new Error(`Agent error: ${chatRes.status}`);
   }
 
-  const { text } = await chatRes.json();
+  const chatData = await chatRes.json();
+  const text = chatData.text;
+  const attachments = chatData.attachments;
 
   // --- Step 2: Get audio from TTS (non-blocking — text is already saved) ---
   let audioBlob: Blob | null = null;
@@ -70,7 +86,7 @@ export async function sendChat(
     console.warn("[API] TTS error, continuing without audio:", e);
   }
 
-  return { text, audioBlob };
+  return { text, audioBlob, attachments };
 }
 
 // Fetch summaries
@@ -137,5 +153,138 @@ export async function fetchDiscussions(accessToken: string, search = "", limit =
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (!res.ok) throw new Error("Failed to fetch discussions");
+  return res.json();
+}
+
+// Fetch discussion detail (session + segments)
+export async function fetchDiscussionDetail(accessToken: string, id: string) {
+  const res = await fetch(`${BACKEND_URL}/api/discussions/${id}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch discussion detail");
+  return res.json();
+}
+
+// Delete discussion
+export async function deleteDiscussion(accessToken: string, id: string) {
+  const res = await fetch(`${BACKEND_URL}/api/discussions/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error("Failed to delete discussion");
+  return res.json();
+}
+
+// Delete summary
+export async function deleteSummary(accessToken: string, id: string) {
+  const res = await fetch(`${BACKEND_URL}/api/summaries/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error("Failed to delete summary");
+  return res.json();
+}
+
+// Update contact
+export async function updateContact(accessToken: string, contactId: string, contact: {
+  name?: string; email?: string; phone?: string; company?: string; notes?: string;
+}) {
+  const res = await fetch(`${BACKEND_URL}/api/contacts/${contactId}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(contact),
+  });
+  if (!res.ok) throw new Error("Failed to update contact");
+  return res.json();
+}
+
+// Fetch user settings
+export async function fetchSettings(accessToken: string) {
+  const res = await fetch(`${BACKEND_URL}/api/settings`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch settings");
+  return res.json();
+}
+
+// Update user settings
+export async function updateSettings(accessToken: string, settings: Record<string, unknown>) {
+  const res = await fetch(`${BACKEND_URL}/api/settings`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(settings),
+  });
+  if (!res.ok) throw new Error("Failed to update settings");
+  return res.json();
+}
+
+// Create conversation
+export async function createConversation(accessToken: string, data: {
+  title?: string; messages?: { role: string; content: string; attachments?: { file_path: string; file_name: string; type: string }[] }[];
+}) {
+  const res = await fetch(`${BACKEND_URL}/api/conversations`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to create conversation");
+  return res.json();
+}
+
+// List conversations
+export async function listConversations(accessToken: string, limit = 20) {
+  const res = await fetch(`${BACKEND_URL}/api/conversations?limit=${limit}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error("Failed to list conversations");
+  return res.json();
+}
+
+// Get conversation detail with messages
+export async function fetchConversationDetail(accessToken: string, id: string) {
+  const res = await fetch(`${BACKEND_URL}/api/conversations/${id}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch conversation");
+  return res.json();
+}
+
+// Add message to conversation
+export async function addConversationMessage(
+  accessToken: string, conversationId: string, role: string, content: string,
+  attachments?: { file_path: string; file_name: string; type: string }[],
+) {
+  const payload: Record<string, unknown> = { role, content };
+  if (attachments && attachments.length > 0) {
+    payload.attachments = attachments;
+  }
+  const res = await fetch(`${BACKEND_URL}/api/conversations/${conversationId}/messages`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("Failed to add message");
+  return res.json();
+}
+
+// Delete conversation
+export async function deleteConversation(accessToken: string, id: string) {
+  const res = await fetch(`${BACKEND_URL}/api/conversations/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error("Failed to delete conversation");
   return res.json();
 }
