@@ -207,7 +207,8 @@ export async function fetchSettings(accessToken: string) {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (!res.ok) throw new Error("Failed to fetch settings");
-  return res.json();
+  const json = await res.json();
+  return json.settings ?? json;
 }
 
 // Update user settings

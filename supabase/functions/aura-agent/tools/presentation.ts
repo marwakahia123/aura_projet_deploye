@@ -58,14 +58,20 @@ export async function executeCreatePresentation(
       return `Erreur lors de la création de la présentation: ${result.error || responseText.substring(0, 100)}`;
     }
 
+    const pdfInfo = result.pdf_file_path
+      ? `\nPDF: ${result.pdf_file_name} (${Math.round((result.pdf_size_bytes || 0) / 1024)} Ko)` +
+        `\nChemin PDF (pdf_file_path): ${result.pdf_file_path}`
+      : "";
+
     return (
       `Présentation créée avec succès!\n` +
       `Titre: ${params.title}\n` +
       `Slides: ${result.slides_count}\n` +
-      `Taille: ${Math.round((result.size_bytes || 0) / 1024)} Ko\n` +
-      `Fichier: ${result.file_name}\n` +
-      `Chemin (file_path): ${result.file_path}\n` +
-      `Pour envoyer par email, utilise send_email_with_attachment avec file_path="${result.file_path}" et file_name="${result.file_name}".`
+      `PPTX: ${result.file_name} (${Math.round((result.size_bytes || 0) / 1024)} Ko)\n` +
+      `Chemin PPTX (file_path): ${result.file_path}` +
+      pdfInfo +
+      `\nPour envoyer par email, utilise send_email_with_attachment avec file_path="${result.file_path}" et file_name="${result.file_name}".` +
+      (result.pdf_file_path ? ` Pour le PDF: file_path="${result.pdf_file_path}" et file_name="${result.pdf_file_name}".` : "")
     );
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);

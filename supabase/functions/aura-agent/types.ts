@@ -25,6 +25,8 @@ export interface AgentAttachment {
   file_path: string;
   file_name: string;
   type: string;
+  pdf_file_path?: string;
+  pdf_file_name?: string;
 }
 
 export interface AgentResult {

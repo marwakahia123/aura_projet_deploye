@@ -715,9 +715,10 @@ export const AGENT_TOOLS = [
   {
     name: "slack_send_dm",
     description:
-      "Envoie un message privé (DM) à un utilisateur Slack. " +
+      "Envoie un message privé (DM) à un utilisateur Slack, avec ou sans fichier joint. " +
       "Utilise slack_list_users d'abord pour trouver le user_id de la personne. " +
-      "Exemples: 'envoie un message privé à Jean sur Slack'.",
+      "Pour envoyer un fichier (ex: présentation), ajoute file_path et file_name. " +
+      "Exemples: 'envoie un message privé à Jean sur Slack', 'envoie la présentation en DM à Marie'.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -728,6 +729,14 @@ export const AGENT_TOOLS = [
         message: {
           type: "string",
           description: "Le message privé à envoyer.",
+        },
+        file_path: {
+          type: "string",
+          description: "Chemin du fichier dans le storage Supabase (retourné par create_presentation). Optionnel.",
+        },
+        file_name: {
+          type: "string",
+          description: "Nom du fichier tel qu'il apparaîtra dans Slack (ex: 'Presentation_IA.pptx'). Requis si file_path est fourni.",
         },
       },
       required: ["user_id", "message"],
@@ -904,11 +913,11 @@ export const AGENT_TOOLS = [
   {
     name: "create_presentation",
     description:
-      "Crée une présentation PowerPoint (PPTX) à partir de contenu structuré en slides. " +
-      "Utilise ce tool quand l'utilisateur demande de créer une présentation, un PowerPoint, ou des slides. " +
-      "Le fichier est généré et stocké temporairement. " +
-      "Pour l'envoyer par email, appelle ensuite send_email_with_attachment avec le file_path retourné. " +
-      "Exemples: 'crée une présentation sur le budget Q2', 'fais un PowerPoint résumant la réunion'.",
+      "Crée une présentation PowerPoint (PPTX) ET sa version PDF automatiquement. " +
+      "Utilise ce tool quand l'utilisateur demande de créer une présentation, un PowerPoint, des slides, ou un PDF de présentation. " +
+      "Le fichier PPTX et le PDF sont générés et stockés. Le retour contient file_path (PPTX) et pdf_file_path (PDF). " +
+      "Pour l'envoyer par email, appelle ensuite send_email_with_attachment avec le file_path retourné (PPTX ou pdf_file_path pour le PDF). " +
+      "Exemples: 'crée une présentation sur le budget Q2', 'fais un PowerPoint résumant la réunion', 'envoie-moi un PDF sur l'IA'.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -1004,11 +1013,197 @@ export const AGENT_TOOLS = [
     },
   },
   {
+    name: "create_report",
+    description:
+      "Crée un rapport/document PDF structuré et professionnel (niveau artifacts Claude). " +
+      "Utilise ce tool quand l'utilisateur demande un rapport, document, compte-rendu, " +
+      "analyse, mémo, brief technique, convention, ou PDF structuré (PAS une présentation/slides). " +
+      "Supporte des templates avancés (executive, modern, creative), des couleurs dynamiques, " +
+      "des types de documents pré-structurés, et le logo utilisateur. " +
+      "Pour l'envoyer par email, appelle ensuite send_email_with_attachment.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        title: {
+          type: "string",
+          description: "Titre du rapport.",
+        },
+        subtitle: {
+          type: "string",
+          description: "Sous-titre optionnel (ex: département, auteur, période).",
+        },
+        theme: {
+          type: "string",
+          enum: ["professional", "minimal", "corporate", "modern", "creative"],
+          description: "Thème de couleurs. Ignoré si custom_color est fourni.",
+        },
+        template: {
+          type: "string",
+          enum: ["executive", "modern", "creative"],
+          description:
+            "Style de mise en page. 'executive' = couverture claire, numérotation auto, professionnel (par défaut). " +
+            "'modern' = couverture sombre, style classique. 'creative' = couverture colorée.",
+        },
+        document_type: {
+          type: "string",
+          enum: [
+            "rapport_intervention",
+            "brief_technique",
+            "recap_brief",
+            "convention_publicitaire",
+            "analyse",
+            "compte_rendu",
+            "custom",
+          ],
+          description:
+            "Type de document structuré. Chaque type a des métadonnées et un footer par défaut. " +
+            "'custom' = document libre (par défaut).",
+        },
+        custom_color: {
+          type: "string",
+          description:
+            "Couleur principale pour le thème (hex #RRGGBB ou nom: rouge, bleu, vert, orange, violet, " +
+            "rose, noir, turquoise, bordeaux, marine, corail, indigo, emeraude). " +
+            "Si fourni, un thème complet est généré à partir de cette couleur.",
+        },
+        metadata: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              key: { type: "string" },
+              value: { type: "string" },
+            },
+            required: ["key", "value"],
+          },
+          description:
+            "Métadonnées affichées en tableau sur la page de couverture " +
+            "(ex: Destinataires, Date, Statut, Durée estimée, Client, Intervenant).",
+        },
+        footer_text: {
+          type: "string",
+          description: "Texte de pied de page personnalisé (ex: 'Document confidentiel — Ne pas diffuser').",
+        },
+        include_logo: {
+          type: "boolean",
+          description:
+            "Inclure le logo de l'utilisateur (true par défaut). " +
+            "Mettre false uniquement si l'utilisateur demande explicitement pas de logo.",
+        },
+        reference: {
+          type: "string",
+          description:
+            "Référence du document affichée sur la couverture (ex: 'RI-2026-0323-SERDOUN', 'BT-2026-0325-PROJET'). " +
+            "Génère un code pertinent basé sur le type de document, la date et le contexte.",
+        },
+        sections: {
+          type: "array",
+          description:
+            "Contenu structuré du rapport. Utilise des types variés pour un rendu professionnel.",
+          items: {
+            type: "object",
+            properties: {
+              type: {
+                type: "string",
+                enum: [
+                  "heading",
+                  "paragraph",
+                  "bullets",
+                  "numbered_list",
+                  "table",
+                  "key_metrics",
+                  "quote",
+                  "page_break",
+                  "info_box",
+                  "alert_box",
+                  "metadata_table",
+                  "separator",
+                ],
+                description:
+                  "Type de section. info_box = encadré coloré avec titre et contenu. " +
+                  "alert_box = boîte d'alerte avec icône. metadata_table = tableau clé-valeur. " +
+                  "separator = ligne décorative.",
+              },
+              level: {
+                type: "integer",
+                enum: [1, 2, 3],
+                description: "Niveau de titre (pour heading). 1=principal, 2=sous-section, 3=sous-sous-section.",
+              },
+              text: {
+                type: "string",
+                description: "Texte (pour heading, paragraph, quote, info_box, alert_box).",
+              },
+              items: {
+                type: "array",
+                items: { type: "string" },
+                description: "Éléments de liste (pour bullets, numbered_list, info_box).",
+              },
+              headers: {
+                type: "array",
+                items: { type: "string" },
+                description: "En-têtes de colonnes (pour table).",
+              },
+              rows: {
+                type: "array",
+                items: {
+                  type: "array",
+                  items: { type: "string" },
+                },
+                description: "Lignes de données (pour table).",
+              },
+              metrics: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    label: { type: "string" },
+                    value: { type: "string" },
+                  },
+                  required: ["label", "value"],
+                },
+                description: "Métriques clés avec label et valeur (pour key_metrics, max 4).",
+              },
+              author: {
+                type: "string",
+                description: "Auteur de la citation (pour quote).",
+              },
+              box_type: {
+                type: "string",
+                enum: ["warning", "info", "tip", "security", "hardware", "forbidden"],
+                description:
+                  "Type d'alerte (pour alert_box). warning=⚠ attention, info=ℹ information, " +
+                  "tip=✶ conseil, security=▲ sécurité/RGPD, hardware=■ matériel, forbidden=⊘ interdit.",
+              },
+              box_title: {
+                type: "string",
+                description: "Titre optionnel de la boîte (pour info_box, alert_box).",
+              },
+              metadata: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    key: { type: "string" },
+                    value: { type: "string" },
+                  },
+                  required: ["key", "value"],
+                },
+                description: "Paires clé-valeur (pour metadata_table).",
+              },
+            },
+            required: ["type"],
+          },
+        },
+      },
+      required: ["title", "sections"],
+    },
+  },
+  {
     name: "send_email_with_attachment",
     description:
-      "Envoie un email avec un fichier en pièce jointe (ex: présentation PPTX). " +
-      "Utilise ce tool APRÈS create_presentation quand l'utilisateur demande d'envoyer la présentation par email. " +
-      "Nécessite le file_path et file_name retournés par create_presentation.",
+      "Envoie un email avec un fichier en pièce jointe (ex: présentation PPTX ou rapport PDF). " +
+      "Utilise ce tool APRÈS create_presentation ou create_report quand l'utilisateur demande d'envoyer le fichier par email. " +
+      "Nécessite le file_path et file_name retournés par create_presentation ou create_report.",
     input_schema: {
       type: "object" as const,
       properties: {

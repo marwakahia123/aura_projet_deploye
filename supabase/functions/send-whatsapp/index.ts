@@ -9,6 +9,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 //   POST /send-whatsapp { action: "save-config", access_token, phone_number_id }
 //   POST /send-whatsapp { action: "get-config" }
 //   POST /send-whatsapp { action: "delete-config" }
+//   POST /send-whatsapp { action: "oauth-callback", code }  ← Meta Embedded Signup
 //
 // Uses per-user Meta WhatsApp Business API credentials
 // ============================================================
@@ -16,6 +17,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const META_APP_ID = Deno.env.get("META_APP_ID") || "";
+const META_APP_SECRET = Deno.env.get("META_APP_SECRET") || "";
 
 // ─── Auth helper (inlined from _shared/auth.ts) ─────────────
 async function getUserFromRequest(
@@ -192,6 +195,108 @@ async function sendWhatsAppMedia(
   return { messageId };
 }
 
+// ─── Meta Embedded Signup: register phone number ─────────────
+async function registerPhoneNumber(accessToken: string, phoneNumberId: string): Promise<void> {
+  const url = `https://graph.facebook.com/v22.0/${phoneNumberId}/register`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      pin: "123456",
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    console.warn(`[send-whatsapp] Register phone failed (${res.status}): ${err}`);
+    // Don't throw — phone may already be registered
+  } else {
+    console.log(`[send-whatsapp] Phone ${phoneNumberId} registered successfully`);
+  }
+}
+
+// ─── Meta Embedded Signup: exchange code for token ───────────
+async function exchangeCodeForToken(code: string): Promise<string> {
+  const url = new URL("https://graph.facebook.com/v22.0/oauth/access_token");
+  url.searchParams.set("client_id", META_APP_ID);
+  url.searchParams.set("client_secret", META_APP_SECRET);
+  url.searchParams.set("code", code);
+
+  const res = await fetch(url.toString());
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Meta token exchange failed (${res.status}): ${err}`);
+  }
+  const data = await res.json();
+  return data.access_token;
+}
+
+// ─── Meta Embedded Signup: get WABA + phone number from token ─
+async function getWABAInfo(userAccessToken: string): Promise<{
+  waba_id: string;
+  phone_number_id: string;
+  display_phone: string;
+  verified_name: string;
+}> {
+  // Step 1: debug_token to extract WABA ID from granted scopes
+  const debugRes = await fetch(
+    `https://graph.facebook.com/v22.0/debug_token?input_token=${userAccessToken}&access_token=${META_APP_ID}|${META_APP_SECRET}`
+  );
+  if (!debugRes.ok) {
+    const err = await debugRes.text();
+    throw new Error(`debug_token failed (${debugRes.status}): ${err}`);
+  }
+  const debugData = await debugRes.json();
+
+  // deno-lint-ignore no-explicit-any
+  const scopes = debugData.data?.granular_scopes || [];
+  console.log("[send-whatsapp] debug_token granular_scopes:", JSON.stringify(scopes));
+
+  // Try whatsapp_business_management first, then whatsapp_business_messaging
+  // deno-lint-ignore no-explicit-any
+  const waScope = scopes.find((s: any) =>
+    s.permission === "whatsapp_business_management" && s.target_ids?.length
+  ) || scopes.find((s: any) =>
+    s.permission === "whatsapp_business_messaging" && s.target_ids?.length
+  );
+  const wabaId = waScope?.target_ids?.[0];
+
+  if (!wabaId) {
+    throw new Error(
+      "Aucun compte WhatsApp Business trouvé. Scopes disponibles: " +
+      scopes.map((s: any) => `${s.permission}(${s.target_ids?.join(",") || "none"})`).join(", ")
+    );
+  }
+
+  // Step 2: Get phone numbers for this WABA
+  const phonesRes = await fetch(
+    `https://graph.facebook.com/v22.0/${wabaId}/phone_numbers?fields=display_phone_number,verified_name,id`,
+    { headers: { Authorization: `Bearer ${userAccessToken}` } }
+  );
+  if (!phonesRes.ok) {
+    const err = await phonesRes.text();
+    throw new Error(`Failed to fetch phone numbers (${phonesRes.status}): ${err}`);
+  }
+  const phonesData = await phonesRes.json();
+  const phone = phonesData.data?.[0];
+
+  if (!phone) {
+    throw new Error(
+      "Aucun numéro de téléphone trouvé sur le compte WhatsApp Business."
+    );
+  }
+
+  return {
+    waba_id: wabaId,
+    phone_number_id: phone.id,
+    display_phone: phone.display_phone_number || "",
+    verified_name: phone.verified_name || "",
+  };
+}
+
 // ─── Get user's WhatsApp config from DB ──────────────────────
 // deno-lint-ignore no-explicit-any
 async function getUserWhatsAppConfig(supabase: any, userId: string) {
@@ -299,6 +404,92 @@ Deno.serve(async (req: Request) => {
 
       console.log(`[send-whatsapp] Config deleted for user ${userId}`);
       return jsonResponse({ success: true });
+    }
+
+    // ── ACTION: OAuth callback — Meta Embedded Signup ──
+    if (action === "oauth-callback") {
+      const { code, waba_id: frontendWabaId, phone_number_id: frontendPhoneId } = params;
+
+      if (!code) {
+        return jsonResponse({ error: "code est requis" }, 400);
+      }
+      if (!META_APP_ID || !META_APP_SECRET) {
+        return jsonResponse({ error: "Configuration Meta (APP_ID/APP_SECRET) manquante côté serveur." }, 500);
+      }
+
+      console.log("[send-whatsapp] oauth-callback received:", { frontendWabaId, frontendPhoneId, hasCode: !!code });
+
+      // Exchange authorization code for access token
+      const accessToken = await exchangeCodeForToken(code as string);
+
+      let wabaId = frontendWabaId as string | undefined;
+      let phoneNumberId = frontendPhoneId as string | undefined;
+      let displayPhone = "";
+      let verifiedName = "";
+
+      if (wabaId && phoneNumberId) {
+        // Use info sent directly from Embedded Signup session event
+        console.log(`[send-whatsapp] Using Embedded Signup session info: WABA=${wabaId}, phone=${phoneNumberId}`);
+
+        // Fetch display phone from the phone number ID
+        try {
+          const phoneRes = await fetch(
+            `https://graph.facebook.com/v22.0/${phoneNumberId}?fields=display_phone_number,verified_name`,
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+          );
+          if (phoneRes.ok) {
+            const phoneData = await phoneRes.json();
+            displayPhone = phoneData.display_phone_number || "";
+            verifiedName = phoneData.verified_name || "";
+          }
+        } catch (e) {
+          console.warn("[send-whatsapp] Could not fetch phone details:", e);
+        }
+      } else {
+        // Fallback: try to extract WABA info from the token
+        console.log("[send-whatsapp] No session info from frontend, falling back to debug_token...");
+        const wabaInfo = await getWABAInfo(accessToken);
+        wabaId = wabaInfo.waba_id;
+        phoneNumberId = wabaInfo.phone_number_id;
+        displayPhone = wabaInfo.display_phone;
+        verifiedName = wabaInfo.verified_name;
+      }
+
+      // Register the phone number with Meta (required after Embedded Signup)
+      if (phoneNumberId) {
+        await registerPhoneNumber(accessToken, phoneNumberId);
+      }
+
+      // Upsert: delete existing then insert
+      await supabase
+        .from("whatsapp_integrations")
+        .delete()
+        .eq("user_id", userId);
+
+      const { error: insertError } = await supabase
+        .from("whatsapp_integrations")
+        .insert({
+          user_id: userId,
+          access_token: accessToken,
+          phone_number_id: phoneNumberId,
+          display_phone: displayPhone,
+          waba_id: wabaId,
+          signup_method: "embedded_signup",
+        });
+
+      if (insertError) {
+        throw new Error(`DB insert failed: ${insertError.message}`);
+      }
+
+      console.log(
+        `[send-whatsapp] Embedded Signup OK for user ${userId} — WABA: ${wabaId}, phone: ${displayPhone}`
+      );
+
+      return jsonResponse({
+        success: true,
+        display_phone: displayPhone,
+        verified_name: verifiedName,
+      });
     }
 
     // ── ACTION: Send WhatsApp message ──

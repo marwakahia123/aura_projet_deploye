@@ -266,8 +266,22 @@ Deno.serve(async (req: Request) => {
         // 3. Resolve channel name to ID (required for file upload)
         let channelId = channel;
         const channelName = channel.replace(/^#/, "");
-        // Always resolve to ID unless it already looks like a Slack ID (starts with C/G)
-        if (!channel.match(/^[CG][A-Z0-9]+$/)) {
+
+        // If it's a user ID (starts with U), open a DM to get the channel ID
+        if (channel.match(/^U[A-Za-z0-9]+$/)) {
+          console.log(`[slack-api] User ID détecté: ${channel}, ouverture DM...`);
+          const { ok: openOk, data: openData } = await slackFetch(slackToken, "conversations.open", {
+            users: channel,
+          });
+          if (openOk && openData.channel?.id) {
+            channelId = openData.channel.id;
+            console.log(`[slack-api] DM ouvert: ${channel} → ${channelId}`);
+          } else {
+            console.error(`[slack-api] Impossible d'ouvrir un DM avec ${channel}`);
+          }
+        }
+        // If it doesn't look like a Slack ID, resolve channel name to ID
+        else if (!channel.match(/^[CGD][A-Za-z0-9]+$/)) {
           const { ok: listOk, data: listData } = await slackFetch(slackToken, "conversations.list", {
             types: "public_channel,private_channel",
             exclude_archived: true,
@@ -287,11 +301,21 @@ Deno.serve(async (req: Request) => {
 
         // 4. Upload file via 3-step process
 
-        // Step 4a: Get pre-signed upload URL
-        const { ok: urlOk, data: urlData } = await slackFetch(slackToken, "files.getUploadURLExternal", {
+        // Step 4a: Get pre-signed upload URL (this endpoint requires form-urlencoded)
+        const uploadParams = new URLSearchParams({
           filename: file_name,
-          length: fileBlob.size,
+          length: String(fileBlob.size),
         });
+        const urlRes = await fetch(`${SLACK_BASE_URL}/files.getUploadURLExternal`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${slackToken}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: uploadParams.toString(),
+        });
+        const urlData = await urlRes.json();
+        const urlOk = urlData.ok === true;
 
         if (!urlOk || !urlData.upload_url || !urlData.file_id) {
           console.error(`[slack-api] getUploadURLExternal error:`, JSON.stringify(urlData));
@@ -315,13 +339,22 @@ Deno.serve(async (req: Request) => {
         console.log(`[slack-api] Fichier uploadé, finalisation avec channel_id=${channelId}...`);
 
         // Step 4c: Complete upload and share to channel
-        const completeBody = {
+        const completeBody = JSON.stringify({
           files: [{ id: urlData.file_id, title: file_name }],
           channel_id: channelId,
           initial_comment: message,
-        };
-        console.log(`[slack-api] completeUploadExternal body:`, JSON.stringify(completeBody));
-        const { ok: completeOk, data: completeData } = await slackFetch(slackToken, "files.completeUploadExternal", completeBody);
+        });
+        console.log(`[slack-api] completeUploadExternal body:`, completeBody);
+        const completeRes = await fetch(`${SLACK_BASE_URL}/files.completeUploadExternal`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${slackToken}`,
+            "Content-Type": "application/json; charset=utf-8",
+          },
+          body: completeBody,
+        });
+        const completeData = await completeRes.json();
+        const completeOk = completeData.ok === true;
 
         if (!completeOk) {
           console.error(`[slack-api] completeUploadExternal error:`, JSON.stringify(completeData));
@@ -355,9 +388,9 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // ── ACTION: send-dm — open DM and send message ──
+    // ── ACTION: send-dm — open DM and send message (with optional file) ──
     if (action === "send-dm") {
-      const { user_id: slackUserId, message } = params;
+      const { user_id: slackUserId, message, file_path, file_name } = params;
 
       if (!slackUserId || !message) {
         return jsonResponse({ error: "user_id et message sont requis" }, 400);
@@ -374,7 +407,85 @@ Deno.serve(async (req: Request) => {
 
       const dmChannelId = openData.channel?.id;
 
-      // Send message in DM
+      // ── File attachment mode ──
+      if (file_path && file_name) {
+        console.log(`[slack-api] Upload fichier DM ${file_name} à ${slackUserId}`);
+
+        const supabaseForDm = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+        const { data: signedData, error: signedError } = await supabaseForDm
+          .storage
+          .from("presentations")
+          .createSignedUrl(file_path, 3600);
+
+        if (signedError || !signedData?.signedUrl) {
+          return jsonResponse(
+            { error: `Impossible de générer l'URL pour le fichier: ${signedError?.message || "fichier introuvable"}` },
+            400
+          );
+        }
+
+        const fileResponse = await fetch(signedData.signedUrl);
+        if (!fileResponse.ok) {
+          return jsonResponse({ error: `Impossible de télécharger le fichier: HTTP ${fileResponse.status}` }, 400);
+        }
+        const fileBlob = await fileResponse.blob();
+
+        // Step 1: Get pre-signed upload URL
+        const dmUploadParams = new URLSearchParams({
+          filename: file_name,
+          length: String(fileBlob.size),
+        });
+        const dmUrlRes = await fetch(`${SLACK_BASE_URL}/files.getUploadURLExternal`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${slackToken}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: dmUploadParams.toString(),
+        });
+        const dmUrlData = await dmUrlRes.json();
+
+        if (!dmUrlData.ok || !dmUrlData.upload_url || !dmUrlData.file_id) {
+          console.error(`[slack-api] DM getUploadURLExternal error:`, JSON.stringify(dmUrlData));
+          return jsonResponse({ error: slackError(dmUrlData.error || "Impossible d'obtenir l'URL d'upload") }, 400);
+        }
+
+        // Step 2: Upload file binary
+        const dmUploadRes = await fetch(dmUrlData.upload_url, { method: "POST", body: fileBlob });
+        if (!dmUploadRes.ok) {
+          return jsonResponse({ error: `Erreur upload fichier DM: HTTP ${dmUploadRes.status}` }, 400);
+        }
+
+        // Step 3: Complete upload and share in DM
+        const dmCompleteRes = await fetch(`${SLACK_BASE_URL}/files.completeUploadExternal`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${slackToken}`,
+            "Content-Type": "application/json; charset=utf-8",
+          },
+          body: JSON.stringify({
+            files: [{ id: dmUrlData.file_id, title: file_name }],
+            channel_id: dmChannelId,
+            initial_comment: message,
+          }),
+        });
+        const dmCompleteData = await dmCompleteRes.json();
+        const dmCompleteOk = dmCompleteData.ok === true;
+
+        if (!dmCompleteOk) {
+          console.error(`[slack-api] DM completeUploadExternal error:`, JSON.stringify(dmCompleteData));
+          return jsonResponse({ error: slackError(dmCompleteData.error) }, 400);
+        }
+
+        console.log(`[slack-api] Fichier ${file_name} envoyé en DM à ${slackUserId}`);
+        return jsonResponse({
+          success: true,
+          channel: dmChannelId,
+          message: `Fichier "${file_name}" envoyé en message privé.`,
+        });
+      }
+
+      // ── Text-only DM ──
       const { ok, data } = await slackFetch(slackToken, "chat.postMessage", {
         channel: dmChannelId,
         text: message,

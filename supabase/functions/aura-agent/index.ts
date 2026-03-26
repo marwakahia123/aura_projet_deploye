@@ -24,6 +24,7 @@ import { executeSlackSendMessage, executeSlackSendDm, executeSlackListChannels, 
 import { executeWebSearch } from "./tools/web.ts";
 import { executeDatagouvSearch, executeDatagouvGetDataset, executeDatagouvQueryData, executeDatagouvGetResourceInfo, executeDatagouvGetMetrics, executeDatagouvSearchDataservices } from "./tools/datagouv.ts";
 import { executeCreatePresentation } from "./tools/presentation.ts";
+import { executeCreateReport } from "./tools/report.ts";
 
 // ═══════════════════════════════════════════════════════════════
 // BOUCLE AGENT (multi-tour)
@@ -265,13 +266,34 @@ async function agentLoop(
               case "create_presentation":
                 toolResult = await executeCreatePresentation(toolCall.input, userJwt);
                 if (!toolResult.startsWith("Erreur")) {
-                  const filePathMatch = toolResult.match(/Chemin \(file_path\): (.+)/);
-                  const fileNameMatch = toolResult.match(/Fichier: (.+)/);
+                  const filePathMatch = toolResult.match(/Chemin PPTX \(file_path\): (.+)/);
+                  const fileNameMatch = toolResult.match(/PPTX: (.+?) \(/);
                   if (filePathMatch && fileNameMatch) {
-                    attachments.push({
+                    const att: AgentAttachment & { pdf_file_path?: string; pdf_file_name?: string } = {
                       file_path: filePathMatch[1].trim(),
                       file_name: fileNameMatch[1].trim(),
                       type: "presentation",
+                    };
+                    const pdfPathMatch = toolResult.match(/Chemin PDF \(pdf_file_path\): (.+)/);
+                    const pdfNameMatch = toolResult.match(/PDF: (.+?) \(/);
+                    if (pdfPathMatch) att.pdf_file_path = pdfPathMatch[1].trim();
+                    if (pdfNameMatch) att.pdf_file_name = pdfNameMatch[1].trim();
+                    attachments.push(att);
+                  }
+                }
+                break;
+              case "create_report":
+                toolResult = await executeCreateReport(toolCall.input, userJwt);
+                if (!toolResult.startsWith("Erreur")) {
+                  const reportPathMatch = toolResult.match(/Chemin PDF \(file_path\): (.+)/);
+                  const reportNameMatch = toolResult.match(/PDF: (.+?) \(/);
+                  if (reportPathMatch && reportNameMatch) {
+                    attachments.push({
+                      file_path: reportPathMatch[1].trim(),
+                      file_name: reportNameMatch[1].trim(),
+                      type: "report",
+                      pdf_file_path: reportPathMatch[1].trim(),
+                      pdf_file_name: reportNameMatch[1].trim(),
                     });
                   }
                 }

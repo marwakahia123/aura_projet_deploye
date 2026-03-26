@@ -46,11 +46,20 @@ export async function executeSlackSendMessage(
 }
 
 export async function executeSlackSendDm(
-  params: { user_id: string; message: string },
+  params: { user_id: string; message: string; file_path?: string; file_name?: string },
   userJwt: string
 ): Promise<string> {
   try {
     const url = `${SUPABASE_URL}/functions/v1/slack-api`;
+    // deno-lint-ignore no-explicit-any
+    const body: Record<string, any> = {
+      action: "send-dm",
+      user_id: params.user_id,
+      message: params.message,
+    };
+    if (params.file_path) body.file_path = params.file_path;
+    if (params.file_name) body.file_name = params.file_name;
+
     const response = await fetch(url, {
       method: "POST",
       headers: {
@@ -58,11 +67,7 @@ export async function executeSlackSendDm(
         "apikey": SUPABASE_ANON_KEY,
         Authorization: userJwt,
       },
-      body: JSON.stringify({
-        action: "send-dm",
-        user_id: params.user_id,
-        message: params.message,
-      }),
+      body: JSON.stringify(body),
     });
 
     const responseText = await response.text();

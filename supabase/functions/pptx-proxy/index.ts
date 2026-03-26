@@ -1,21 +1,41 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getUserFromRequest } from "../_shared/auth.ts";
 
 // ============================================================
 // PPTX Proxy — Edge Function
 //
-// Proxy entre aura-agent et le MCP PowerPoint Server (HTTP).
+// Proxy entre aura-agent et le PPTX Server (REST API).
 // 1. Reçoit une description de présentation (titre + slides)
-// 2. Appelle le MCP server pour créer le PPTX
-// 3. Récupère le fichier généré
-// 4. Upload dans Supabase Storage (bucket "presentations")
-// 5. Retourne le chemin du fichier
+// 2. Appelle POST /generate pour créer le PPTX (base64)
+// 3. Appelle POST /convert-to-pdf pour le PDF (base64)
+// 4. Upload les deux dans Supabase Storage (bucket "presentations")
+// 5. Retourne les chemins des fichiers
 // ============================================================
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const PPTX_MCP_SERVER_URL = Deno.env.get("PPTX_MCP_SERVER_URL") || "http://localhost:8000";
+const PPTX_SERVER_URL = Deno.env.get("PPTX_MCP_SERVER_URL") || Deno.env.get("PPTX_SERVER_URL") || "http://localhost:8200";
+const PPTX_API_KEY = Deno.env.get("PPTX_API_KEY") || "aura-pptx-secret-key";
+
+// ─── Auth helper (inlined) ──────────────────────────────────
+async function getUserFromRequest(
+  req: Request
+): Promise<{ user_id: string; email: string }> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    throw new Error("Token d'authentification manquant");
+  }
+  const token = authHeader.replace("Bearer ", "");
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    throw new Error("Token invalide ou expiré. Veuillez vous reconnecter.");
+  }
+  return { user_id: user.id, email: user.email || "" };
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -31,167 +51,105 @@ function jsonResponse(data: unknown, status = 200) {
   });
 }
 
-// ─── MCP Server Helper: call a tool ─────────────────────────
-interface McpToolResult {
-  // deno-lint-ignore no-explicit-any
-  content: any[];
-  isError?: boolean;
+// ─── Helper: decode base64 to Uint8Array ─────────────────────
+function base64ToBytes(b64: string): Uint8Array {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
 }
 
-async function callMcpTool(
-  toolName: string,
-  // deno-lint-ignore no-explicit-any
-  args: Record<string, any>
-): Promise<McpToolResult> {
-  const url = `${PPTX_MCP_SERVER_URL}/mcp`;
-  console.log(`[pptx-proxy] MCP call: ${toolName}`, JSON.stringify(args).substring(0, 200));
+// ─── Helper: encode Uint8Array to base64 ─────────────────────
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+// ─── Generate Report PDF via REST API ─────────────────────────
+interface ReportResult {
+  base64_data: string;
+  file_name: string;
+  pages_count: number;
+  size_bytes: number;
+}
+
+// deno-lint-ignore no-explicit-any
+async function generateReport(body: Record<string, any>): Promise<ReportResult> {
+  const url = `${PPTX_SERVER_URL}/generate-report`;
+  console.log(`[pptx-proxy] POST ${url} — "${body.title}" (${body.sections?.length} sections)`);
 
   const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: crypto.randomUUID(),
-      method: "tools/call",
-      params: {
-        name: toolName,
-        arguments: args,
-      },
-    }),
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": PPTX_API_KEY,
+    },
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`MCP server error (${response.status}): ${errText}`);
+    throw new Error(`Report server error (${response.status}): ${errText}`);
   }
 
-  const result = await response.json();
-
-  if (result.error) {
-    throw new Error(`MCP tool error: ${JSON.stringify(result.error)}`);
-  }
-
-  return result.result;
+  return await response.json();
 }
 
-// ─── Extract text from MCP result ────────────────────────────
-function extractMcpText(result: McpToolResult): string {
-  if (!result.content || result.content.length === 0) return "";
-  const textItem = result.content.find(
-    // deno-lint-ignore no-explicit-any
-    (c: any) => c.type === "text"
-  );
-  return textItem?.text || "";
+// ─── Generate PPTX via REST API ──────────────────────────────
+interface GenerateResult {
+  base64_data: string;
+  file_name: string;
+  slides_count: number;
+  size_bytes: number;
 }
 
-// ─── Build presentation via MCP server ──────────────────────
-interface SlideInput {
-  title: string;
-  content?: string;
-  bullets?: string[];
-  layout?: string;
-}
+// deno-lint-ignore no-explicit-any
+async function generatePptx(body: Record<string, any>): Promise<GenerateResult> {
+  const url = `${PPTX_SERVER_URL}/generate`;
+  console.log(`[pptx-proxy] POST ${url} — "${body.title}" (${body.slides?.length} slides)`);
 
-interface PresentationInput {
-  title: string;
-  slides: SlideInput[];
-  theme?: string;
-}
-
-async function buildPresentation(input: PresentationInput): Promise<string> {
-  // 1. Create a new presentation
-  const createResult = await callMcpTool("create_presentation", {});
-  const createText = extractMcpText(createResult);
-  console.log(`[pptx-proxy] create_presentation:`, createText.substring(0, 200));
-
-  // 2. Set core properties (title, author)
-  await callMcpTool("set_core_properties", {
-    title: input.title,
-    author: "AURA Assistant",
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": PPTX_API_KEY,
+    },
+    body: JSON.stringify(body),
   });
 
-  // 3. Add each slide
-  for (let i = 0; i < input.slides.length; i++) {
-    const slide = input.slides[i];
-
-    // Add a blank slide
-    const addSlideResult = await callMcpTool("add_slide", {
-      layout_index: i === 0 ? 0 : 1, // 0 = title slide, 1 = title + content
-    });
-    console.log(`[pptx-proxy] add_slide ${i}:`, extractMcpText(addSlideResult).substring(0, 100));
-
-    const slideIndex = i; // 0-based index
-
-    // Populate slide title
-    await callMcpTool("populate_placeholder", {
-      slide_index: slideIndex,
-      placeholder_index: 0, // Title placeholder
-      text: slide.title,
-    });
-
-    // Add content or bullets
-    if (slide.bullets && slide.bullets.length > 0) {
-      await callMcpTool("add_bullet_points", {
-        slide_index: slideIndex,
-        items: slide.bullets,
-      });
-    } else if (slide.content) {
-      await callMcpTool("populate_placeholder", {
-        slide_index: slideIndex,
-        placeholder_index: 1, // Body placeholder
-        text: slide.content,
-      });
-    }
-  }
-
-  // 4. Apply professional design if theme specified
-  if (input.theme) {
-    try {
-      await callMcpTool("apply_professional_design", {
-        design_type: "theme",
-        theme_name: input.theme,
-      });
-      console.log(`[pptx-proxy] Thème appliqué: ${input.theme}`);
-    } catch (err) {
-      console.warn(`[pptx-proxy] Thème non appliqué:`, err);
-      // Non-fatal: continue without theme
-    }
-  }
-
-  // 5. Save presentation to a temp file on the MCP server
-  const fileName = input.title
-    .replace(/[^a-zA-Z0-9àâäéèêëïîôùûüçÀÂÄÉÈÊËÏÎÔÙÛÜÇ\s-]/g, "")
-    .replace(/\s+/g, "_")
-    .substring(0, 50);
-  const outputPath = `/tmp/${fileName}_${Date.now()}.pptx`;
-
-  const saveResult = await callMcpTool("save_presentation", {
-    file_path: outputPath,
-  });
-  console.log(`[pptx-proxy] save_presentation:`, extractMcpText(saveResult).substring(0, 200));
-
-  return outputPath;
-}
-
-// ─── Retrieve PPTX file from MCP server ─────────────────────
-async function downloadFromMcpServer(filePath: string): Promise<Uint8Array> {
-  // The MCP server saves files on its filesystem.
-  // We fetch the file via a simple HTTP GET endpoint.
-  const url = `${PPTX_MCP_SERVER_URL}/files${filePath}`;
-  console.log(`[pptx-proxy] Downloading PPTX from: ${url}`);
-
-  const response = await fetch(url);
   if (!response.ok) {
-    // Fallback: try to get file content via MCP tool
-    const result = await callMcpTool("get_presentation_info", {});
-    const info = extractMcpText(result);
-    throw new Error(
-      `Cannot download PPTX from MCP server (${response.status}). Info: ${info.substring(0, 200)}`
-    );
+    const errText = await response.text();
+    throw new Error(`PPTX server error (${response.status}): ${errText}`);
   }
 
-  const arrayBuffer = await response.arrayBuffer();
-  return new Uint8Array(arrayBuffer);
+  return await response.json();
+}
+
+// ─── Convert PPTX to PDF via REST API ────────────────────────
+async function convertToPdf(pptxBase64: string): Promise<{ base64_data: string; size_bytes: number }> {
+  const url = `${PPTX_SERVER_URL}/convert-to-pdf`;
+  console.log(`[pptx-proxy] Converting to PDF via: ${url}`);
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": PPTX_API_KEY,
+    },
+    body: JSON.stringify({ base64_data: pptxBase64 }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`PDF conversion failed (${response.status}): ${errText}`);
+  }
+
+  return await response.json();
 }
 
 // ─── Main handler ───────────────────────────────────────────
@@ -206,44 +164,94 @@ Deno.serve(async (req) => {
     console.log(`[pptx-proxy] User: ${userId}`);
 
     // Parse request
-    const body: PresentationInput = await req.json();
+    const body = await req.json();
 
-    if (!body.title || !body.slides || body.slides.length === 0) {
-      return jsonResponse(
-        { error: "title et slides[] sont requis" },
-        400
+    const isReport = Array.isArray(body.sections) && body.sections.length > 0;
+    const isPresentation = Array.isArray(body.slides) && body.slides.length > 0;
+
+    if (!body.title || (!isReport && !isPresentation)) {
+      return jsonResponse({ error: "title et slides[] ou sections[] requis" }, 400);
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const fileId = crypto.randomUUID();
+
+    // ─── Report path (sections → PDF natif) ───────────────────
+    if (isReport) {
+      console.log(
+        `[pptx-proxy] Création rapport: "${body.title}" (${body.sections.length} sections)`
       );
-    }
 
-    // Validate slides
-    for (const slide of body.slides) {
-      if (!slide.title) {
-        return jsonResponse(
-          { error: "Chaque slide doit avoir un titre" },
-          400
-        );
+      // Inject user logo URL if available and not explicitly excluded
+      if (body.include_logo !== false) {
+        try {
+          const { data: settings } = await supabase
+            .from("user_settings")
+            .select("logo_path")
+            .eq("user_id", userId)
+            .single();
+          if (settings?.logo_path) {
+            const { data: signedUrl } = await supabase.storage
+              .from("logos")
+              .createSignedUrl(settings.logo_path, 300); // 5 min
+            if (signedUrl?.signedUrl) {
+              body.logo_url = signedUrl.signedUrl;
+              console.log(`[pptx-proxy] Logo URL injected for user ${userId}`);
+            }
+          }
+        } catch (logoErr) {
+          console.warn(`[pptx-proxy] Logo lookup failed (non-fatal):`, logoErr);
+        }
       }
+
+      const reportResult = await generateReport(body);
+      const pdfData = base64ToBytes(reportResult.base64_data);
+      console.log(`[pptx-proxy] PDF rapport généré: ${pdfData.length} bytes, ${reportResult.pages_count} pages`);
+
+      const storagePath = `${userId}/${fileId}.pdf`;
+      const displayName = reportResult.file_name || (body.title
+        .replace(/[^a-zA-Z0-9àâäéèêëïîôùûüçÀÂÄÉÈÊËÏÎÔÙÛÜÇ\s-]/g, "")
+        .replace(/\s+/g, "_")
+        .substring(0, 50) + ".pdf");
+
+      const { error: uploadError } = await supabase.storage
+        .from("presentations")
+        .upload(storagePath, pdfData, {
+          contentType: "application/pdf",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw new Error(`Storage upload failed: ${uploadError.message}`);
+      }
+
+      console.log(`[pptx-proxy] Rapport PDF uploadé: ${storagePath}`);
+
+      return jsonResponse({
+        success: true,
+        file_path: storagePath,
+        file_name: displayName,
+        pages_count: reportResult.pages_count,
+        size_bytes: pdfData.length,
+      });
     }
 
+    // ─── Presentation path (slides → PPTX + PDF conversion) ──
     console.log(
       `[pptx-proxy] Création présentation: "${body.title}" (${body.slides.length} slides)`
     );
 
-    // 1. Build PPTX via MCP server
-    const mcpFilePath = await buildPresentation(body);
+    // 1. Generate PPTX via REST API (returns base64)
+    const genResult = await generatePptx(body);
+    const pptxData = base64ToBytes(genResult.base64_data);
+    console.log(`[pptx-proxy] PPTX généré: ${pptxData.length} bytes, ${genResult.slides_count} slides`);
 
-    // 2. Download the generated PPTX
-    const pptxData = await downloadFromMcpServer(mcpFilePath);
-    console.log(`[pptx-proxy] PPTX téléchargé: ${pptxData.length} bytes`);
-
-    // 3. Upload to Supabase Storage
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const fileId = crypto.randomUUID();
+    // 2. Upload PPTX to Supabase Storage
     const storagePath = `${userId}/${fileId}.pptx`;
-    const displayName = body.title
+    const displayName = genResult.file_name || (body.title
       .replace(/[^a-zA-Z0-9àâäéèêëïîôùûüçÀÂÄÉÈÊËÏÎÔÙÛÜÇ\s-]/g, "")
       .replace(/\s+/g, "_")
-      .substring(0, 50) + ".pptx";
+      .substring(0, 50) + ".pptx");
 
     const { error: uploadError } = await supabase.storage
       .from("presentations")
@@ -257,13 +265,45 @@ Deno.serve(async (req) => {
       throw new Error(`Storage upload failed: ${uploadError.message}`);
     }
 
-    console.log(`[pptx-proxy] Uploadé dans Storage: ${storagePath}`);
+    console.log(`[pptx-proxy] PPTX uploadé: ${storagePath}`);
+
+    // 3. Convert to PDF and upload
+    let pdfStoragePath = "";
+    let pdfDisplayName = "";
+    let pdfSizeBytes = 0;
+
+    try {
+      const pdfResult = await convertToPdf(genResult.base64_data);
+      const pdfData = base64ToBytes(pdfResult.base64_data);
+      pdfStoragePath = `${userId}/${fileId}.pdf`;
+      pdfDisplayName = displayName.replace(/\.pptx$/, ".pdf");
+      pdfSizeBytes = pdfData.length;
+
+      const { error: pdfUploadError } = await supabase.storage
+        .from("presentations")
+        .upload(pdfStoragePath, pdfData, {
+          contentType: "application/pdf",
+          upsert: false,
+        });
+
+      if (pdfUploadError) {
+        console.warn(`[pptx-proxy] PDF upload failed: ${pdfUploadError.message}`);
+        pdfStoragePath = "";
+      } else {
+        console.log(`[pptx-proxy] PDF uploadé: ${pdfStoragePath}`);
+      }
+    } catch (pdfErr) {
+      console.warn(`[pptx-proxy] PDF conversion failed (non-fatal):`, pdfErr);
+    }
 
     return jsonResponse({
       success: true,
       file_path: storagePath,
       file_name: displayName,
-      slides_count: body.slides.length,
+      pdf_file_path: pdfStoragePath || undefined,
+      pdf_file_name: pdfDisplayName || undefined,
+      pdf_size_bytes: pdfSizeBytes || undefined,
+      slides_count: genResult.slides_count,
       size_bytes: pptxData.length,
     });
   } catch (err) {

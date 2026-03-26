@@ -7,6 +7,7 @@ import {
   fetchIntegrations,
   disconnectIntegration,
   handleOAuthCallback,
+  callEdgeFunction,
   getGmailOAuthUrl,
   getOutlookOAuthUrl,
   getHubSpotOAuthUrl,
@@ -16,6 +17,7 @@ import {
 } from "@/lib/integrations";
 import { fetchSettings, updateSettings } from "@/lib/api";
 import { useTheme } from "@/context/ThemeContext";
+import { supabase } from "@/lib/supabase";
 
 const OAUTH_URLS: Partial<Record<Provider, () => string>> = {
   gmail: getGmailOAuthUrl,
@@ -67,6 +69,11 @@ export default function SettingsPage() {
 
   const [connecting, setConnecting] = useState(false);
 
+  // Logo upload state
+  const [logoPath, setLogoPath] = useState<string | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+
   // Twilio config form
   const [showTwilioForm, setShowTwilioForm] = useState(false);
   const [twilioSid, setTwilioSid] = useState("");
@@ -79,6 +86,8 @@ export default function SettingsPage() {
   const [waToken, setWaToken] = useState("");
   const [waPhoneId, setWaPhoneId] = useState("");
   const [waSaving, setWaSaving] = useState(false);
+  const [waMethod, setWaMethod] = useState<"embedded" | "manual">("embedded");
+  const [fbReady, setFbReady] = useState(false);
 
   // Theme change handler — applies immediately + updates local state
   const handleThemeChange = useCallback((value: string) => {
@@ -87,6 +96,50 @@ export default function SettingsPage() {
       applyTheme(value);
     }
   }, [applyTheme]);
+
+  // Logo upload handler
+  const handleLogoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.id || !session?.access_token) return;
+    if (file.size > 500 * 1024) {
+      setError("Logo trop volumineux (max 500 Ko)");
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      setError("Format invalide — utilisez PNG ou JPG");
+      return;
+    }
+    setLogoUploading(true);
+    setError(null);
+    try {
+      const path = `${user.id}/logo${file.name.substring(file.name.lastIndexOf("."))}`;
+      const { error: upErr } = await supabase.storage.from("logos").upload(path, file, { upsert: true });
+      if (upErr) throw upErr;
+      setLogoPath(path);
+      setLogoPreview(URL.createObjectURL(file));
+      await updateSettings(session.access_token, { logo_path: path });
+      setSuccessMsg("Logo sauvegarde");
+      setTimeout(() => setSuccessMsg(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur upload logo");
+    } finally {
+      setLogoUploading(false);
+    }
+  }, [user?.id, session?.access_token]);
+
+  const handleLogoDelete = useCallback(async () => {
+    if (!logoPath || !session?.access_token) return;
+    try {
+      await supabase.storage.from("logos").remove([logoPath]);
+      await updateSettings(session.access_token, { logo_path: null });
+      setLogoPath(null);
+      setLogoPreview(null);
+      setSuccessMsg("Logo supprime");
+      setTimeout(() => setSuccessMsg(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur suppression logo");
+    }
+  }, [logoPath, session?.access_token]);
 
   // Load settings from backend on mount
   useEffect(() => {
@@ -113,6 +166,12 @@ export default function SettingsPage() {
         if (data.passive_timeout) setPassiveTimeout(data.passive_timeout);
         if (data.retention) setRetention(data.retention);
         if (data.langue_transcription) setLangueTranscription(data.langue_transcription);
+        if (data.logo_path) {
+          setLogoPath(data.logo_path);
+          // Public bucket — build direct URL
+          const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/logos/${data.logo_path}`;
+          setLogoPreview(publicUrl);
+        }
         setSettingsLoaded(true);
       })
       .catch((err) => {
@@ -318,6 +377,130 @@ export default function SettingsPage() {
     } finally {
       setWaSaving(false);
     }
+  };
+
+  // Load Facebook JS SDK for WhatsApp Embedded Signup
+  useEffect(() => {
+    if (activeSection !== "connectors") return;
+    // deno-lint-ignore no-explicit-any
+    if ((window as any).FB) { setFbReady(true); return; }
+
+    (window as any).fbAsyncInit = function () {
+      (window as any).FB.init({
+        appId: process.env.NEXT_PUBLIC_META_APP_ID,
+        cookie: true,
+        xfbml: false,
+        version: "v22.0",
+      });
+      setFbReady(true);
+    };
+
+    const script = document.createElement("script");
+    script.src = "https://connect.facebook.net/en_US/sdk.js";
+    script.async = true;
+    script.defer = true;
+    document.body.appendChild(script);
+  }, [activeSection]);
+
+  // WhatsApp Embedded Signup via Facebook Login
+  const handleWhatsappEmbeddedSignup = () => {
+    const FB = (window as any).FB;
+    if (!FB || !fbReady) {
+      setError("Facebook SDK non charge. Veuillez reessayer.");
+      return;
+    }
+    if (!process.env.NEXT_PUBLIC_META_CONFIG_ID) {
+      setError("Configuration Meta manquante (NEXT_PUBLIC_META_CONFIG_ID).");
+      return;
+    }
+
+    // FB.login requires HTTPS — check before calling
+    if (window.location.protocol !== "https:") {
+      setError("Facebook Login requiert HTTPS. Utilisez l'onglet 'Configuration manuelle' en dev local, ou accedez via HTTPS.");
+      return;
+    }
+
+    setConnecting(true);
+    setError(null);
+
+    // Capture WABA info from Embedded Signup session event
+    let signupInfo: { waba_id?: string; phone_number_id?: string } = {};
+
+    const messageListener = (event: MessageEvent) => {
+      if (
+        event.origin !== "https://www.facebook.com" &&
+        event.origin !== "https://web.facebook.com"
+      ) return;
+
+      try {
+        const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+        if (data.type === "WA_EMBEDDED_SIGNUP") {
+          signupInfo = data.data || {};
+          console.log("[WhatsApp] Embedded Signup info received:", signupInfo);
+        }
+      } catch {
+        // Ignore non-JSON messages
+      }
+    };
+    window.addEventListener("message", messageListener);
+
+    // FB.login callback must be a plain function (not async)
+    FB.login(
+      (response: any) => {
+        if (response.authResponse?.code) {
+          const code = response.authResponse.code;
+
+          // Wait briefly for the WA_EMBEDDED_SIGNUP message event (may arrive after FB.login callback)
+          const sendToBackend = () => {
+            window.removeEventListener("message", messageListener);
+            console.log("[WhatsApp] Sending to backend:", { waba_id: signupInfo.waba_id, phone_number_id: signupInfo.phone_number_id });
+            callEdgeFunction(
+              "send-whatsapp",
+              {
+                action: "oauth-callback",
+                code,
+                waba_id: signupInfo.waba_id,
+                phone_number_id: signupInfo.phone_number_id,
+              },
+              session!.access_token
+            )
+              .then(() => fetchIntegrations(session!.access_token))
+              .then((updated) => {
+                setIntegrations(updated);
+                setShowWhatsappForm(false);
+                setSuccessMsg("WhatsApp connecte avec succes");
+                setTimeout(() => setSuccessMsg(null), 4000);
+              })
+              .catch((err) => {
+                setError(err instanceof Error ? err.message : "Erreur de connexion WhatsApp");
+              })
+              .finally(() => setConnecting(false));
+          };
+
+          // If signup info already captured, send immediately; otherwise wait 1s
+          if (signupInfo.waba_id && signupInfo.phone_number_id) {
+            sendToBackend();
+          } else {
+            console.log("[WhatsApp] Waiting for Embedded Signup session event...");
+            setTimeout(sendToBackend, 1000);
+          }
+        } else {
+          window.removeEventListener("message", messageListener);
+          setError("Connexion WhatsApp annulee.");
+          setConnecting(false);
+        }
+      },
+      {
+        config_id: process.env.NEXT_PUBLIC_META_CONFIG_ID,
+        response_type: "code",
+        override_default_response_type: true,
+        extras: {
+          setup: {},
+          featureType: "",
+          sessionInfoVersion: 2,
+        },
+      }
+    );
   };
 
   const handleDisconnect = async (provider: Provider) => {
@@ -531,6 +714,73 @@ export default function SettingsPage() {
             >
               <Toggle checked={notifications} onChange={setNotifications} />
             </SettingRow>
+
+            {/* Logo upload for reports */}
+            <div style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border-light)",
+              borderRadius: 12,
+              padding: 20,
+              marginTop: 16,
+            }}>
+              <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--text)", margin: "0 0 4px" }}>
+                Logo pour les rapports
+              </h3>
+              <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "0 0 12px" }}>
+                Ce logo sera automatiquement insere sur vos rapports PDF
+              </p>
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                {(logoPreview || logoPath) && (
+                  <div style={{
+                    width: 64, height: 64, borderRadius: 8,
+                    border: "1px solid var(--border-light)",
+                    overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center",
+                    background: "var(--bg)",
+                  }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={logoPreview || ""}
+                      alt="Logo"
+                      style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+                    />
+                  </div>
+                )}
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <label style={{
+                    padding: "8px 16px", borderRadius: 8,
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
+                    color: "var(--text-secondary)",
+                    fontSize: 13, fontWeight: 500, cursor: "pointer",
+                    display: "inline-block", textAlign: "center",
+                    opacity: logoUploading ? 0.5 : 1,
+                  }}>
+                    {logoUploading ? "Upload..." : logoPath ? "Changer" : "Choisir un logo"}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={handleLogoUpload}
+                      disabled={logoUploading}
+                      style={{ display: "none" }}
+                    />
+                  </label>
+                  {logoPath && (
+                    <button
+                      onClick={handleLogoDelete}
+                      style={{
+                        padding: "6px 12px", borderRadius: 8,
+                        border: "1px solid var(--border)",
+                        background: "transparent",
+                        color: "var(--red, #e74c3c)",
+                        fontSize: 12, cursor: "pointer",
+                      }}
+                    >
+                      Supprimer
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -840,7 +1090,7 @@ export default function SettingsPage() {
               </div>
             )}
 
-            {/* ── WhatsApp config form ── */}
+            {/* ── WhatsApp config form (dual method: Embedded Signup + Manual) ── */}
             {showWhatsappForm && (
               <div
                 style={{
@@ -851,95 +1101,188 @@ export default function SettingsPage() {
                   background: "var(--surface)",
                 }}
               >
-                <h4 style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 600, color: "var(--text)" }}>
+                <h4 style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 600, color: "var(--text)" }}>
                   Configurer WhatsApp Business
                 </h4>
-                <p style={{ margin: "0 0 16px", fontSize: 12, color: "var(--text-muted)" }}>
-                  Entrez vos identifiants Meta WhatsApp Business API. Vous les trouverez dans le{" "}
-                  <a
-                    href="https://developers.facebook.com/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: "var(--orange)" }}
+
+                {/* ── Tab selector ── */}
+                <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "1px solid var(--border-light)" }}>
+                  <button
+                    onClick={() => setWaMethod("embedded")}
+                    style={{
+                      padding: "8px 16px",
+                      fontSize: 13,
+                      fontWeight: waMethod === "embedded" ? 600 : 400,
+                      color: waMethod === "embedded" ? "#25D366" : "var(--text-secondary)",
+                      background: "transparent",
+                      border: "none",
+                      borderBottom: waMethod === "embedded" ? "2px solid #25D366" : "2px solid transparent",
+                      cursor: "pointer",
+                      marginBottom: -1,
+                    }}
                   >
-                    Meta for Developers Dashboard
-                  </a>.
-                </p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 4 }}>
-                      Access Token (Permanent)
-                    </label>
-                    <input
-                      type="password"
-                      placeholder="EAAxxxxxxx..."
-                      value={waToken}
-                      onChange={(e) => setWaToken(e.target.value)}
-                      style={{
-                        width: "100%",
-                        padding: "8px 12px",
-                        borderRadius: 8,
-                        border: "1px solid var(--border-light)",
-                        background: "var(--bg)",
-                        color: "var(--text)",
-                        fontSize: 13,
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 4 }}>
-                      Phone Number ID
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="1234567890..."
-                      value={waPhoneId}
-                      onChange={(e) => setWaPhoneId(e.target.value)}
-                      style={{
-                        width: "100%",
-                        padding: "8px 12px",
-                        borderRadius: 8,
-                        border: "1px solid var(--border-light)",
-                        background: "var(--bg)",
-                        color: "var(--text)",
-                        fontSize: 13,
-                      }}
-                    />
-                  </div>
-                  <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                    <button
-                      onClick={handleWhatsappSave}
-                      disabled={waSaving || !waToken || !waPhoneId}
-                      style={{
-                        padding: "8px 20px",
-                        borderRadius: 8,
-                        border: "none",
-                        background: "#25D366",
-                        color: "white",
-                        fontSize: 13,
-                        fontWeight: 600,
-                        cursor: waSaving ? "wait" : "pointer",
-                        opacity: waSaving || !waToken || !waPhoneId ? 0.6 : 1,
-                      }}
-                    >
-                      {waSaving ? "Verification..." : "Connecter"}
-                    </button>
-                    <button
-                      onClick={() => setShowWhatsappForm(false)}
-                      style={{
-                        padding: "8px 20px",
-                        borderRadius: 8,
-                        border: "1px solid var(--border-light)",
-                        background: "transparent",
-                        color: "var(--text-secondary)",
-                        fontSize: 13,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Annuler
-                    </button>
-                  </div>
+                    Connexion Facebook
+                  </button>
+                  <button
+                    onClick={() => setWaMethod("manual")}
+                    style={{
+                      padding: "8px 16px",
+                      fontSize: 13,
+                      fontWeight: waMethod === "manual" ? 600 : 400,
+                      color: waMethod === "manual" ? "#25D366" : "var(--text-secondary)",
+                      background: "transparent",
+                      border: "none",
+                      borderBottom: waMethod === "manual" ? "2px solid #25D366" : "2px solid transparent",
+                      cursor: "pointer",
+                      marginBottom: -1,
+                    }}
+                  >
+                    Configuration manuelle
+                  </button>
                 </div>
+
+                {/* ── Tab: Embedded Signup ── */}
+                {waMethod === "embedded" && (
+                  <div>
+                    <p style={{ margin: "0 0 16px", fontSize: 12, color: "var(--text-muted)" }}>
+                      Connectez votre compte WhatsApp Business en un clic via Facebook.
+                      Aucune configuration manuelle requise.
+                    </p>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        onClick={handleWhatsappEmbeddedSignup}
+                        disabled={connecting || !fbReady}
+                        style={{
+                          padding: "10px 24px",
+                          borderRadius: 8,
+                          border: "none",
+                          background: "#1877F2",
+                          color: "white",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: connecting ? "wait" : "pointer",
+                          opacity: connecting || !fbReady ? 0.6 : 1,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        {connecting ? "Connexion en cours..." : "Se connecter avec Facebook"}
+                      </button>
+                      <button
+                        onClick={() => setShowWhatsappForm(false)}
+                        style={{
+                          padding: "8px 20px",
+                          borderRadius: 8,
+                          border: "1px solid var(--border-light)",
+                          background: "transparent",
+                          color: "var(--text-secondary)",
+                          fontSize: 13,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                    {!fbReady && (
+                      <p style={{ margin: "8px 0 0", fontSize: 11, color: "var(--text-muted)" }}>
+                        Chargement du SDK Facebook...
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Tab: Manual config ── */}
+                {waMethod === "manual" && (
+                  <div>
+                    <p style={{ margin: "0 0 16px", fontSize: 12, color: "var(--text-muted)" }}>
+                      Pour les utilisateurs avances. Entrez vos identifiants depuis le{" "}
+                      <a
+                        href="https://developers.facebook.com/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: "var(--orange)" }}
+                      >
+                        Meta for Developers Dashboard
+                      </a>.
+                    </p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      <div>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 4 }}>
+                          Access Token (Permanent)
+                        </label>
+                        <input
+                          type="password"
+                          placeholder="EAAxxxxxxx..."
+                          value={waToken}
+                          onChange={(e) => setWaToken(e.target.value)}
+                          style={{
+                            width: "100%",
+                            padding: "8px 12px",
+                            borderRadius: 8,
+                            border: "1px solid var(--border-light)",
+                            background: "var(--bg)",
+                            color: "var(--text)",
+                            fontSize: 13,
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--text-secondary)", marginBottom: 4 }}>
+                          Phone Number ID
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="1234567890..."
+                          value={waPhoneId}
+                          onChange={(e) => setWaPhoneId(e.target.value)}
+                          style={{
+                            width: "100%",
+                            padding: "8px 12px",
+                            borderRadius: 8,
+                            border: "1px solid var(--border-light)",
+                            background: "var(--bg)",
+                            color: "var(--text)",
+                            fontSize: 13,
+                          }}
+                        />
+                      </div>
+                      <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                        <button
+                          onClick={handleWhatsappSave}
+                          disabled={waSaving || !waToken || !waPhoneId}
+                          style={{
+                            padding: "8px 20px",
+                            borderRadius: 8,
+                            border: "none",
+                            background: "#25D366",
+                            color: "white",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            cursor: waSaving ? "wait" : "pointer",
+                            opacity: waSaving || !waToken || !waPhoneId ? 0.6 : 1,
+                          }}
+                        >
+                          {waSaving ? "Verification..." : "Connecter"}
+                        </button>
+                        <button
+                          onClick={() => setShowWhatsappForm(false)}
+                          style={{
+                            padding: "8px 20px",
+                            borderRadius: 8,
+                            border: "1px solid var(--border-light)",
+                            background: "transparent",
+                            color: "var(--text-secondary)",
+                            fontSize: 13,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Annuler
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

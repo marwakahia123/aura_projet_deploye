@@ -23,6 +23,7 @@ SETTINGS_FIELDS = [
     "continuite", "son_confirmation",
     "passive_active", "resumes_auto", "passive_timeout",
     "retention", "langue_transcription",
+    "logo_path",
 ]
 
 

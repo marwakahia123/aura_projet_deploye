@@ -33,7 +33,7 @@ const SLACK_CLIENT_ID = process.env.NEXT_PUBLIC_SLACK_CLIENT_ID || "";
 
 // ─── Edge Function caller ───────────────────────────────────
 
-async function callEdgeFunction(
+export async function callEdgeFunction(
   functionName: string,
   body: Record<string, unknown>,
   accessToken?: string
@@ -165,6 +165,13 @@ export async function handleOAuthCallback(
       return callEdgeFunction(
         "slack-api",
         { action: "oauth-callback", code, redirect_uri: redirectUri },
+        accessToken
+      );
+
+    case "whatsapp":
+      return callEdgeFunction(
+        "send-whatsapp",
+        { action: "oauth-callback", code },
         accessToken
       );
 
